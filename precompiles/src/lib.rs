@@ -61,7 +61,7 @@ lazy_static! {
         ),
         Precompile::new(
             solana_sdk_ids::secp256r1_program::id(),
-            Some(solana_feature_set::enable_secp256r1_precompile::id()),
+            Some(solana_feature_set::enable_secp256r1_precompile2::id()),
             solana_secp256r1_program::verify,
         )
     ];

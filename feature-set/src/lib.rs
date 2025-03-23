@@ -952,6 +952,10 @@ pub mod enable_vote_address_leader_schedule {
     solana_pubkey::declare_id!("5JsG4NWH8Jbrqdd8uL6BNwnyZK3dQSoieRXG5vmofj9y");
 }
 
+pub mod enable_secp256r1_precompile2 {
+    solana_pubkey::declare_id!("serxaoB4TUZQAFqm3mV7wiZ4nxJCihDprBi8ehwpCsn");
+}
+
 lazy_static! {
     /// Map of feature identifiers to user-visible description
     pub static ref FEATURE_NAMES: AHashMap<Pubkey, &'static str> = [
@@ -1185,6 +1189,7 @@ lazy_static! {
         (create_slashing_program::id(), "creates an enshrined slashing program SIMD-0204"),
         (disable_partitioned_rent_collection::id(), "Disable partitioned rent collection SIMD-0175 #4562"),
         (enable_vote_address_leader_schedule::id(), "Enable vote address leader schedule SIMD-0180 #4573"),
+        (enable_secp256r1_precompile2::id(), "Enable secp256r1 precompile SIMD-0075"),
         /*************** ADD NEW FEATURES HERE ***************/
     ]
     .iter()
