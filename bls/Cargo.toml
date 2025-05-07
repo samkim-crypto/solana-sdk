@@ -37,7 +37,7 @@ solana-signer-derive = [
 ]
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [lints]
 workspace = true
