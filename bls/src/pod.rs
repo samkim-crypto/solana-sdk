@@ -108,8 +108,10 @@ impl Default for Pubkey {
     }
 }
 
-// Directly implement the `Pod` and `Zeroable` traits for types that are
-// wrappers around byte arrays.
+// Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
+// `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.
+// Directly implement these traits for types that are simple wrappers around
+// byte arrays.
 unsafe impl Zeroable for PubkeyCompressed {}
 unsafe impl Pod for PubkeyCompressed {}
 unsafe impl ZeroableInOption for PubkeyCompressed {}
