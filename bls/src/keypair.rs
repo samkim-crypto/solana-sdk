@@ -22,6 +22,7 @@ pub struct SecretKey(pub(crate) Scalar);
 
 impl SecretKey {
     /// Constructs a new, random `BlsSecretKey` using `OsRng`
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let mut rng = OsRng;
         Self(Scalar::random(&mut rng))
@@ -165,6 +166,7 @@ pub struct Keypair {
 
 impl Keypair {
     /// Constructs a new, random `Keypair` using `OsRng`
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let secret = SecretKey::new();
         let public = PubkeyProjective::from_secret(&secret);
