@@ -142,9 +142,7 @@ impl TryFrom<Pubkey> for PubkeyProjective {
     type Error = BlsError;
 
     fn try_from(proof: Pubkey) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G1Affine> = G1Affine::from_uncompressed(&proof.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.into()))
+        (&proof).try_into()
     }
 }
 

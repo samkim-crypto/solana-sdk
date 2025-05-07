@@ -23,9 +23,7 @@ impl TryFrom<ProofOfPossession> for ProofOfPossessionProjective {
     type Error = BlsError;
 
     fn try_from(proof: ProofOfPossession) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&proof.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.into()))
+        (&proof).try_into()
     }
 }
 
