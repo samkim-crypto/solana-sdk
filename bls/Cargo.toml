@@ -30,7 +30,12 @@ bincode = { workspace = true }
 solana-keypair = { workspace = true }
 
 [features]
-solana-signer-derive = ["dep:solana-signer", "dep:solana-signer", "dep:subtle"]
+solana-signer-derive = [
+    "dep:solana-signer",
+    "dep:solana-signature",
+    "dep:solana-signer",
+    "dep:subtle",
+]
 
 [lib]
 crate-type = ["cdylib", "rlib"]
