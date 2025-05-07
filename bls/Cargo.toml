@@ -33,7 +33,6 @@ solana-keypair = { workspace = true }
 solana-signer-derive = [
     "dep:solana-signer",
     "dep:solana-signature",
-    "dep:solana-signer",
     "dep:subtle",
 ]
 
