@@ -7,7 +7,7 @@ use {
     blstrs::{G1Affine, G1Projective, Scalar},
     ff::Field,
     group::Group,
-    rand::{rngs::OsRng, CryptoRng, RngCore},
+    rand::rngs::OsRng,
     std::ptr,
 };
 #[cfg(feature = "solana-signer-derive")]
@@ -21,18 +21,10 @@ pub const BLS_SECRET_KEY_SIZE: usize = 32;
 pub struct SecretKey(pub(crate) Scalar);
 
 impl SecretKey {
-    /// Constructs a new, random `BlsSecretKey` using a caller-provided RNG
-    pub fn generate<R>(csprng: &mut R) -> Self
-    where
-        R: CryptoRng + RngCore,
-    {
-        Self(Scalar::random(csprng))
-    }
-
     /// Constructs a new, random `BlsSecretKey` using `OsRng`
     pub fn new() -> Self {
         let mut rng = OsRng;
-        Self::generate(&mut rng)
+        Self(Scalar::random(&mut rng))
     }
 
     /// Derive a `BlsSecretKey` from a seed (input key material)
@@ -174,20 +166,11 @@ pub struct Keypair {
 }
 
 impl Keypair {
-    /// Constructs a new, random `Keypair` using a caller-provided RNG
-    pub fn generate<R>(csprng: &mut R) -> Self
-    where
-        R: CryptoRng + RngCore,
-    {
-        let secret = SecretKey::generate(csprng);
-        let public = PubkeyProjective::from_secret(&secret);
-        Self { secret, public }
-    }
-
     /// Constructs a new, random `Keypair` using `OsRng`
     pub fn new() -> Self {
-        let mut rng = OsRng;
-        Self::generate(&mut rng)
+        let secret = SecretKey::new();
+        let public = PubkeyProjective::from_secret(&secret);
+        Self { secret, public }
     }
 
     /// Derive a `Keypair` from a seed (input key material)
