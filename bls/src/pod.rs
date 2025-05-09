@@ -1,5 +1,5 @@
+#[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
-
 #[cfg(feature = "serde")]
 use {
     serde::{Deserialize, Serialize},
@@ -127,35 +127,39 @@ impl Default for Pubkey {
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.
 // Directly implement these traits for types that are simple wrappers around
 // byte arrays.
-unsafe impl Zeroable for PubkeyCompressed {}
-unsafe impl Pod for PubkeyCompressed {}
-unsafe impl ZeroableInOption for PubkeyCompressed {}
-unsafe impl PodInOption for PubkeyCompressed {}
+#[cfg(feature = "bytemuck")]
+mod bytemuck_impls {
+    use super::*;
+    unsafe impl Zeroable for PubkeyCompressed {}
+    unsafe impl Pod for PubkeyCompressed {}
+    unsafe impl ZeroableInOption for PubkeyCompressed {}
+    unsafe impl PodInOption for PubkeyCompressed {}
 
-unsafe impl Zeroable for Pubkey {}
-unsafe impl Pod for Pubkey {}
-unsafe impl ZeroableInOption for Pubkey {}
-unsafe impl PodInOption for Pubkey {}
+    unsafe impl Zeroable for Pubkey {}
+    unsafe impl Pod for Pubkey {}
+    unsafe impl ZeroableInOption for Pubkey {}
+    unsafe impl PodInOption for Pubkey {}
 
-unsafe impl Zeroable for Signature {}
-unsafe impl Pod for Signature {}
-unsafe impl ZeroableInOption for Signature {}
-unsafe impl PodInOption for Signature {}
+    unsafe impl Zeroable for Signature {}
+    unsafe impl Pod for Signature {}
+    unsafe impl ZeroableInOption for Signature {}
+    unsafe impl PodInOption for Signature {}
 
-unsafe impl Zeroable for SignatureCompressed {}
-unsafe impl Pod for SignatureCompressed {}
-unsafe impl ZeroableInOption for SignatureCompressed {}
-unsafe impl PodInOption for SignatureCompressed {}
+    unsafe impl Zeroable for SignatureCompressed {}
+    unsafe impl Pod for SignatureCompressed {}
+    unsafe impl ZeroableInOption for SignatureCompressed {}
+    unsafe impl PodInOption for SignatureCompressed {}
 
-unsafe impl Zeroable for ProofOfPossessionCompressed {}
-unsafe impl Pod for ProofOfPossessionCompressed {}
-unsafe impl ZeroableInOption for ProofOfPossessionCompressed {}
-unsafe impl PodInOption for ProofOfPossessionCompressed {}
+    unsafe impl Zeroable for ProofOfPossessionCompressed {}
+    unsafe impl Pod for ProofOfPossessionCompressed {}
+    unsafe impl ZeroableInOption for ProofOfPossessionCompressed {}
+    unsafe impl PodInOption for ProofOfPossessionCompressed {}
 
-unsafe impl Zeroable for ProofOfPossession {}
-unsafe impl Pod for ProofOfPossession {}
-unsafe impl ZeroableInOption for ProofOfPossession {}
-unsafe impl PodInOption for ProofOfPossession {}
+    unsafe impl Zeroable for ProofOfPossession {}
+    unsafe impl Pod for ProofOfPossession {}
+    unsafe impl ZeroableInOption for ProofOfPossession {}
+    unsafe impl PodInOption for ProofOfPossession {}
+}
 
 #[cfg(test)]
 mod tests {
