@@ -13,6 +13,7 @@ pub const BLS_SIGNATURE_COMPRESSED_SIZE: usize = 96;
 pub const BLS_SIGNATURE_AFFINE_SIZE: usize = 192;
 
 /// A serialized BLS signature in a compressed point representation
+#[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
@@ -28,6 +29,7 @@ impl Default for SignatureCompressed {
 }
 
 /// A serialized BLS signature in an affine point representation
+#[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
@@ -49,6 +51,7 @@ pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
 pub const BLS_PROOF_OF_POSSESSION_AFFINE_SIZE: usize = 192;
 
 /// A serialized BLS signature in a compressed point representation
+#[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
@@ -67,6 +70,7 @@ impl Default for ProofOfPossessionCompressed {
 }
 
 /// A serialized BLS signature in an affine point representation
+#[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
@@ -91,6 +95,7 @@ pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
 pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 
 /// A serialized BLS public key in a compressed point representation
+#[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
@@ -109,6 +114,7 @@ impl Default for PubkeyCompressed {
 }
 
 /// A serialized BLS public key in an affine point representation
+#[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]

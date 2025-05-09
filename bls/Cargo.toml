@@ -13,6 +13,12 @@ edition = { workspace = true }
 bytemuck = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_with = { workspace = true, features = ["macros"], optional = true }
+solana-frozen-abi = { workspace = true, optional = true, features = [
+    "frozen-abi",
+] }
+solana-frozen-abi-macro = { workspace = true, optional = true, features = [
+    "frozen-abi",
+] }
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
 blst = { workspace = true }
@@ -31,6 +37,7 @@ solana-keypair = { workspace = true }
 
 [features]
 bytemuck = ["dep:bytemuck"]
+frozen-abi = ["dep:solana-frozen-abi", "dep:solana-frozen-abi-macro"]
 serde = ["dep:serde", "dep:serde_with"]
 solana-signer-derive = [
     "dep:solana-signer",
