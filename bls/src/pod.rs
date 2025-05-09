@@ -1,5 +1,7 @@
+use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
+
+#[cfg(feature = "serde")]
 use {
-    bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption},
     serde::{Deserialize, Serialize},
     serde_with::serde_as,
 };
@@ -11,11 +13,12 @@ pub const BLS_SIGNATURE_COMPRESSED_SIZE: usize = 96;
 pub const BLS_SIGNATURE_AFFINE_SIZE: usize = 192;
 
 /// A serialized BLS signature in a compressed point representation
-#[serde_with::serde_as]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct SignatureCompressed(
-    #[serde_as(as = "[_; BLS_SIGNATURE_COMPRESSED_SIZE]")] pub [u8; BLS_SIGNATURE_COMPRESSED_SIZE],
+    #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_COMPRESSED_SIZE]"))]
+    pub  [u8; BLS_SIGNATURE_COMPRESSED_SIZE],
 );
 
 impl Default for SignatureCompressed {
@@ -25,11 +28,12 @@ impl Default for SignatureCompressed {
 }
 
 /// A serialized BLS signature in an affine point representation
-#[serde_with::serde_as]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Signature(
-    #[serde_as(as = "[_; BLS_SIGNATURE_AFFINE_SIZE]")] pub [u8; BLS_SIGNATURE_AFFINE_SIZE],
+    #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_AFFINE_SIZE]"))]
+    pub  [u8; BLS_SIGNATURE_AFFINE_SIZE],
 );
 
 impl Default for Signature {
@@ -45,12 +49,15 @@ pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
 pub const BLS_PROOF_OF_POSSESSION_AFFINE_SIZE: usize = 192;
 
 /// A serialized BLS signature in a compressed point representation
-#[serde_as]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct ProofOfPossessionCompressed(
-    #[serde_as(as = "[_; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE]")]
-    pub  [u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
+    #[cfg_attr(
+        feature = "serde",
+        serde_as(as = "[_; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE]")
+    )]
+    pub [u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
 );
 
 impl Default for ProofOfPossessionCompressed {
@@ -60,12 +67,15 @@ impl Default for ProofOfPossessionCompressed {
 }
 
 /// A serialized BLS signature in an affine point representation
-#[serde_as]
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct ProofOfPossession(
-    #[serde_as(as = "[_; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE]")]
-    pub  [u8; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE],
+    #[cfg_attr(
+        feature = "serde",
+        serde_as(as = "[_; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE]")
+    )]
+    pub [u8; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE],
 );
 
 impl Default for ProofOfPossession {
@@ -81,11 +91,15 @@ pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
 pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 
 /// A serialized BLS public key in a compressed point representation
-#[serde_as]
-#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct PubkeyCompressed(
-    #[serde_as(as = "[_; BLS_PUBLIC_KEY_COMPRESSED_SIZE]")] pub [u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
+    #[cfg_attr(
+        feature = "serde",
+        serde_as(as = "[_; BLS_PUBLIC_KEY_COMPRESSED_SIZE]")
+    )]
+    pub [u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
 );
 
 impl Default for PubkeyCompressed {
@@ -95,11 +109,12 @@ impl Default for PubkeyCompressed {
 }
 
 /// A serialized BLS public key in an affine point representation
-#[serde_as]
-#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd, Deserialize, Serialize)]
+#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Pubkey(
-    #[serde_as(as = "[_; BLS_PUBLIC_KEY_AFFINE_SIZE]")] pub [u8; BLS_PUBLIC_KEY_AFFINE_SIZE],
+    #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_PUBLIC_KEY_AFFINE_SIZE]"))]
+    pub  [u8; BLS_PUBLIC_KEY_AFFINE_SIZE],
 );
 
 impl Default for Pubkey {
@@ -144,8 +159,10 @@ unsafe impl PodInOption for ProofOfPossession {}
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "serde")]
     use super::*;
 
+    #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_deserialize_pubkey() {
         let original = Pubkey::default();
@@ -159,6 +176,7 @@ mod tests {
         assert_eq!(original, deserialized);
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_deserialize_pubkey_compressed() {
         let original = PubkeyCompressed::default();
@@ -172,6 +190,7 @@ mod tests {
         assert_eq!(original, deserialized);
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_deserialize_signature() {
         let original = Signature::default();
@@ -185,6 +204,7 @@ mod tests {
         assert_eq!(original, deserialized);
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_deserialize_signature_compressed() {
         let original = SignatureCompressed::default();
@@ -198,6 +218,7 @@ mod tests {
         assert_eq!(original, deserialized);
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_deserialize_proof_of_possession() {
         let original = ProofOfPossession::default();
@@ -211,6 +232,7 @@ mod tests {
         assert_eq!(original, deserialized);
     }
 
+    #[cfg(feature = "serde")]
     #[test]
     fn serialize_and_deserialize_proof_of_possession_compressed() {
         let original = ProofOfPossessionCompressed::default();

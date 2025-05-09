@@ -11,8 +11,8 @@ edition = { workspace = true }
 
 [dependencies]
 bytemuck = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_with = { workspace = true, features = ["macros"] }
+serde = { workspace = true, features = ["derive"], optional = true }
+serde_with = { workspace = true, features = ["macros"], optional = true }
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
 blst = { workspace = true }
@@ -30,6 +30,7 @@ bincode = { workspace = true }
 solana-keypair = { workspace = true }
 
 [features]
+serde = ["dep:serde", "dep:serde_with"]
 solana-signer-derive = [
     "dep:solana-signer",
     "dep:solana-signature",
