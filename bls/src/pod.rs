@@ -14,7 +14,8 @@ pub const BLS_SIGNATURE_AFFINE_SIZE: usize = 192;
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
-#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct SignatureCompressed(
@@ -30,7 +31,8 @@ impl Default for SignatureCompressed {
 
 /// A serialized BLS signature in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
-#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct Signature(
@@ -52,7 +54,8 @@ pub const BLS_PROOF_OF_POSSESSION_AFFINE_SIZE: usize = 192;
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
-#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct ProofOfPossessionCompressed(
@@ -71,7 +74,8 @@ impl Default for ProofOfPossessionCompressed {
 
 /// A serialized BLS signature in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
-#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct ProofOfPossession(
@@ -96,7 +100,8 @@ pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 
 /// A serialized BLS public key in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
-#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct PubkeyCompressed(
@@ -115,7 +120,8 @@ impl Default for PubkeyCompressed {
 
 /// A serialized BLS public key in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
-#[cfg_attr(feature = "serde", serde_as, derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Clone, Copy, Debug, Hash, Eq, Ord, PartialEq, PartialOrd)]
 #[repr(transparent)]
 pub struct Pubkey(

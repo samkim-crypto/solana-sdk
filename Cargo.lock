@@ -2789,6 +2789,7 @@ dependencies = [
  "blst",
  "blstrs",
  "bytemuck",
+ "cfg_eval",
  "ff",
  "group",
  "rand 0.8.5",
