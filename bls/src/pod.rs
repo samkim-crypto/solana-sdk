@@ -13,8 +13,14 @@ use {
 /// Size of a BLS signature in a compressed point representation
 pub const BLS_SIGNATURE_COMPRESSED_SIZE: usize = 96;
 
+/// Size of a BLS signature in a compressed point representation in base64
+pub const BLS_SIGNATURE_COMPRESSED_BASE64_SIZE: usize = 128;
+
 /// Size of a BLS signature in an affine point representation
 pub const BLS_SIGNATURE_AFFINE_SIZE: usize = 192;
+
+/// Size of a BLS signature in an affine point representation in base64
+pub const BLS_SIGNATURE_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -42,7 +48,7 @@ impl fmt::Display for SignatureCompressed {
 impl_from_str!(
     TYPE = SignatureCompressed,
     BYTES_LEN = BLS_SIGNATURE_COMPRESSED_SIZE,
-    BASE64_LEN = 128
+    BASE64_LEN = BLS_SIGNATURE_COMPRESSED_BASE64_SIZE
 );
 
 /// A serialized BLS signature in an affine point representation
@@ -71,14 +77,20 @@ impl fmt::Display for Signature {
 impl_from_str!(
     TYPE = Signature,
     BYTES_LEN = BLS_SIGNATURE_AFFINE_SIZE,
-    BASE64_LEN = 256
+    BASE64_LEN = BLS_SIGNATURE_AFFINE_BASE64_SIZE
 );
 
 /// Size of a BLS proof of possession in a compressed point representation
 pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
 
+/// Size of a BLS proof of possession in a compressed point representation in base64
+pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_BASE64_SIZE: usize = 128;
+
 /// Size of a BLS proof of possession in an affine point representation
 pub const BLS_PROOF_OF_POSSESSION_AFFINE_SIZE: usize = 192;
+
+/// Size of a BLS proof of possession in an affine point representation in base64
+pub const BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -109,7 +121,7 @@ impl fmt::Display for ProofOfPossessionCompressed {
 impl_from_str!(
     TYPE = ProofOfPossessionCompressed,
     BYTES_LEN = BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE,
-    BASE64_LEN = 128
+    BASE64_LEN = BLS_PROOF_OF_POSSESSION_COMPRESSED_BASE64_SIZE
 );
 
 /// A serialized BLS signature in an affine point representation
@@ -141,14 +153,20 @@ impl fmt::Display for ProofOfPossession {
 impl_from_str!(
     TYPE = ProofOfPossession,
     BYTES_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
-    BASE64_LEN = 256
+    BASE64_LEN = BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE
 );
 
 /// Size of a BLS public key in a compressed point representation
 pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
 
+/// Size of a BLS public key in a compressed point representation in base64
+pub const BLS_PUBLIC_KEY_COMPRESSED_BASE64_SIZE: usize = 128;
+
 /// Size of a BLS public key in an affine point representation
 pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
+
+/// Size of a BLS public key in an affine point representation in base64
+pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A serialized BLS public key in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -179,7 +197,7 @@ impl fmt::Display for PubkeyCompressed {
 impl_from_str!(
     TYPE = PubkeyCompressed,
     BYTES_LEN = BLS_PUBLIC_KEY_COMPRESSED_SIZE,
-    BASE64_LEN = 64
+    BASE64_LEN = BLS_PUBLIC_KEY_COMPRESSED_BASE64_SIZE
 );
 
 /// A serialized BLS public key in an affine point representation
@@ -208,7 +226,7 @@ impl fmt::Display for Pubkey {
 impl_from_str!(
     TYPE = Pubkey,
     BYTES_LEN = BLS_PUBLIC_KEY_AFFINE_SIZE,
-    BASE64_LEN = 128
+    BASE64_LEN = BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE
 );
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
