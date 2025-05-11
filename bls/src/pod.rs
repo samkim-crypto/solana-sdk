@@ -1,5 +1,9 @@
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
+use {
+    base64::{prelude::BASE64_STANDARD, Engine},
+    std::fmt,
+};
 #[cfg(feature = "serde")]
 use {
     serde::{Deserialize, Serialize},
@@ -29,6 +33,18 @@ impl Default for SignatureCompressed {
     }
 }
 
+impl fmt::Display for SignatureCompressed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", BASE64_STANDARD.encode(self.0))
+    }
+}
+
+impl_from_str!(
+    TYPE = SignatureCompressed,
+    BYTES_LEN = BLS_SIGNATURE_COMPRESSED_SIZE,
+    BASE64_LEN = 128
+);
+
 /// A serialized BLS signature in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -45,6 +61,18 @@ impl Default for Signature {
         Self([0; BLS_SIGNATURE_AFFINE_SIZE])
     }
 }
+
+impl fmt::Display for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", BASE64_STANDARD.encode(self.0))
+    }
+}
+
+impl_from_str!(
+    TYPE = Signature,
+    BYTES_LEN = BLS_SIGNATURE_AFFINE_SIZE,
+    BASE64_LEN = 256
+);
 
 /// Size of a BLS proof of possession in a compressed point representation
 pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
@@ -72,6 +100,18 @@ impl Default for ProofOfPossessionCompressed {
     }
 }
 
+impl fmt::Display for ProofOfPossessionCompressed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", BASE64_STANDARD.encode(self.0))
+    }
+}
+
+impl_from_str!(
+    TYPE = ProofOfPossessionCompressed,
+    BYTES_LEN = BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE,
+    BASE64_LEN = 128
+);
+
 /// A serialized BLS signature in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -91,6 +131,18 @@ impl Default for ProofOfPossession {
         Self([0; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE])
     }
 }
+
+impl fmt::Display for ProofOfPossession {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", BASE64_STANDARD.encode(self.0))
+    }
+}
+
+impl_from_str!(
+    TYPE = ProofOfPossession,
+    BYTES_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
+    BASE64_LEN = 256
+);
 
 /// Size of a BLS public key in a compressed point representation
 pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
@@ -118,6 +170,18 @@ impl Default for PubkeyCompressed {
     }
 }
 
+impl fmt::Display for PubkeyCompressed {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", BASE64_STANDARD.encode(self.0))
+    }
+}
+
+impl_from_str!(
+    TYPE = PubkeyCompressed,
+    BYTES_LEN = BLS_PUBLIC_KEY_COMPRESSED_SIZE,
+    BASE64_LEN = 64
+);
+
 /// A serialized BLS public key in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -134,6 +198,18 @@ impl Default for Pubkey {
         Self([0; BLS_PUBLIC_KEY_AFFINE_SIZE])
     }
 }
+
+impl fmt::Display for Pubkey {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", BASE64_STANDARD.encode(self.0))
+    }
+}
+
+impl_from_str!(
+    TYPE = Pubkey,
+    BYTES_LEN = BLS_PUBLIC_KEY_AFFINE_SIZE,
+    BASE64_LEN = 128
+);
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.
@@ -173,10 +249,83 @@ mod bytemuck_impls {
     unsafe impl PodInOption for ProofOfPossession {}
 }
 
+macro_rules! impl_from_str {
+    (TYPE = $type:ident, BYTES_LEN = $bytes_len:expr, BASE64_LEN = $base64_len:expr) => {
+        impl std::str::FromStr for $type {
+            type Err = crate::error::BlsError;
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                use base64::Engine;
+
+                if s.len() > $base64_len {
+                    return Err(Self::Err::ParseFromString);
+                }
+                let mut bytes = [0u8; $bytes_len];
+                let decoded_len = base64::prelude::BASE64_STANDARD
+                    .decode_slice(s, &mut bytes)
+                    .map_err(|_| Self::Err::ParseFromString)?;
+                if decoded_len != $bytes_len {
+                    Err(Self::Err::ParseFromString)
+                } else {
+                    Ok($type(bytes))
+                }
+            }
+        }
+    };
+}
+use impl_from_str;
+
 #[cfg(test)]
 mod tests {
-    #[cfg(feature = "serde")]
-    use super::*;
+    use {super::*, crate::keypair::Keypair, std::str::FromStr};
+
+    #[test]
+    fn pubkey_from_str() {
+        let pubkey = Keypair::new().public;
+        let pubkey_affine: Pubkey = pubkey.into();
+        let pubkey_affine_string = pubkey_affine.to_string();
+        let pubkey_affine_from_string = Pubkey::from_str(&pubkey_affine_string).unwrap();
+        assert_eq!(pubkey_affine, pubkey_affine_from_string);
+
+        let pubkey_compressed = PubkeyCompressed([1; BLS_PUBLIC_KEY_COMPRESSED_SIZE]);
+        let pubkey_compressed_string = pubkey_compressed.to_string();
+        let pubkey_compressed_from_string =
+            PubkeyCompressed::from_str(&pubkey_compressed_string).unwrap();
+        assert_eq!(pubkey_compressed, pubkey_compressed_from_string);
+    }
+
+    #[test]
+    fn signature_from_str() {
+        let signature_affine = Signature([1; BLS_SIGNATURE_AFFINE_SIZE]);
+        let signature_affine_string = signature_affine.to_string();
+        let signature_affine_from_string = Signature::from_str(&signature_affine_string).unwrap();
+        assert_eq!(signature_affine, signature_affine_from_string);
+
+        let signature_compressed = SignatureCompressed([1; BLS_SIGNATURE_COMPRESSED_SIZE]);
+        let signature_compressed_string = signature_compressed.to_string();
+        let signature_compressed_from_string =
+            SignatureCompressed::from_str(&signature_compressed_string).unwrap();
+        assert_eq!(signature_compressed, signature_compressed_from_string);
+    }
+
+    #[test]
+    fn proof_of_possession_from_str() {
+        let proof_of_possession = ProofOfPossession([1; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE]);
+        let proof_of_possession_string = proof_of_possession.to_string();
+        let proof_of_possession_from_string =
+            ProofOfPossession::from_str(&proof_of_possession_string).unwrap();
+        assert_eq!(proof_of_possession, proof_of_possession_from_string);
+
+        let proof_of_possession_compressed =
+            ProofOfPossessionCompressed([1; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE]);
+        let proof_of_possession_compressed_string = proof_of_possession_compressed.to_string();
+        let proof_of_possession_compressed_from_string =
+            ProofOfPossessionCompressed::from_str(&proof_of_possession_compressed_string).unwrap();
+        assert_eq!(
+            proof_of_possession_compressed,
+            proof_of_possession_compressed_from_string
+        );
+    }
 
     #[cfg(feature = "serde")]
     #[test]
