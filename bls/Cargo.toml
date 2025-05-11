@@ -21,6 +21,7 @@ solana-frozen-abi = { workspace = true, optional = true, features = [
 solana-frozen-abi-macro = { workspace = true, optional = true, features = [
     "frozen-abi",
 ] }
+thiserror = { workspace = true }
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
 blst = { workspace = true }
@@ -31,7 +32,6 @@ rand = { workspace = true }
 solana-signature = { workspace = true, optional = true }
 solana-signer = { workspace = true, optional = true }
 subtle = { workspace = true, optional = true }
-thiserror = { workspace = true }
 
 [dev-dependencies]
 bincode = { workspace = true }

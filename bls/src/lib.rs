@@ -22,7 +22,6 @@ use {
 // TODO: add conversion between compressed and uncompressed representation of
 // signatures, pubkeys, and proof of possessions
 
-#[cfg(not(target_os = "solana"))]
 pub mod error;
 #[cfg(not(target_os = "solana"))]
 pub mod keypair;
