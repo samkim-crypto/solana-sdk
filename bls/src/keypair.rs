@@ -288,9 +288,9 @@ impl From<&Keypair> for [u8; BLS_KEYPAIR_SIZE] {
 impl Keypair {
     pub fn read_json<R: Read>(reader: &mut R) -> Result<Self, Box<dyn error::Error>> {
         let bytes: Vec<u8> = serde_json::from_reader(reader)?;
-        Self::try_from(bytes.as_slice()).ok().ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::Other, "Invalid BLS keypair").into()
-        })
+        Self::try_from(bytes.as_slice())
+            .ok()
+            .ok_or_else(|| std::io::Error::other("Invalid BLS keypair").into())
     }
 
     pub fn read_json_file<F: AsRef<Path>>(path: F) -> Result<Self, Box<dyn error::Error>> {
