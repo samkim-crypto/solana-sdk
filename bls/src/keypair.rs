@@ -1,17 +1,17 @@
 #[cfg(feature = "fs")]
-use {
-    crate::pod::BLS_PUBLIC_KEY_AFFINE_SIZE,
-    std::{
-        error,
-        fs::{self, File, OpenOptions},
-        io::{Read, Write},
-        path::Path,
-    },
+use std::{
+    error,
+    fs::{self, File, OpenOptions},
+    io::{Read, Write},
+    path::Path,
 };
 use {
     crate::{
-        error::BlsError, pod::Pubkey, proof_of_possession::ProofOfPossessionProjective,
-        signature::SignatureProjective, Bls,
+        error::BlsError,
+        pod::{Pubkey, BLS_PUBLIC_KEY_AFFINE_SIZE},
+        proof_of_possession::ProofOfPossessionProjective,
+        signature::SignatureProjective,
+        Bls,
     },
     blst::{blst_keygen, blst_scalar},
     blstrs::{G1Affine, G1Projective, Scalar},
