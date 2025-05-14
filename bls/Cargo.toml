@@ -43,7 +43,7 @@ tempfile = { workspace = true }
 [features]
 bytemuck = ["dep:bytemuck"]
 default = ["std"]
-frozen-abi = ["dep:solana-frozen-abi", "dep:solana-frozen-abi-macro"]
+frozen-abi = ["dep:solana-frozen-abi", "dep:solana-frozen-abi-macro", "std"]
 serde = ["dep:cfg_eval", "dep:serde", "dep:serde_with"]
 solana-signer-derive = [
     "dep:solana-signer",
