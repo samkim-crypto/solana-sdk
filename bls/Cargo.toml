@@ -38,6 +38,7 @@ subtle = { workspace = true, optional = true }
 bincode = { workspace = true }
 solana-keypair = { workspace = true }
 solana-bls = { path = ".", features = ["fs"] }
+tempfile = { workspace = true }
 
 [features]
 bytemuck = ["dep:bytemuck"]

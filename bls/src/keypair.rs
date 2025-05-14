@@ -336,7 +336,7 @@ impl Keypair {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use {super::*, tempfile::NamedTempFile};
 
     #[test]
     fn test_keygen_derive() {
@@ -363,15 +363,12 @@ mod tests {
     #[test]
     #[cfg(feature = "fs")]
     fn test_keypair_file() {
-        let out_dir = std::env::var("FARF_DIR").unwrap_or_else(|_| "farf".to_string());
-        let outfile = format!("{}/tmp/test_write_keypair_file.json", out_dir);
+        let temp_keypair_file = NamedTempFile::new().unwrap();
         let original_keypair = Keypair::new();
-        original_keypair.write_json_file(&outfile).unwrap();
-        assert!(Path::new(&outfile).exists());
-
-        let read_keypair = Keypair::read_json_file(&outfile).unwrap();
+        original_keypair
+            .write_json_file(&temp_keypair_file)
+            .unwrap();
+        let read_keypair = Keypair::read_json_file(&temp_keypair_file).unwrap();
         assert_eq!(original_keypair, read_keypair);
-
-        fs::remove_file(&outfile).unwrap();
     }
 }
