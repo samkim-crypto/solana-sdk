@@ -105,9 +105,7 @@ impl TryFrom<&[u8]> for SecretKey {
 
 impl From<&SecretKey> for [u8; BLS_SECRET_KEY_SIZE] {
     fn from(secret_key: &SecretKey) -> Self {
-        let mut bytes = [0u8; BLS_SECRET_KEY_SIZE];
-        bytes.copy_from_slice(secret_key.0.to_bytes_le().as_slice());
-        bytes
+        secret_key.0.to_bytes_le()
     }
 }
 
@@ -208,10 +206,8 @@ impl TryFrom<&[u8]> for PubkeyProjective {
 
 impl From<&PubkeyProjective> for [u8; BLS_PUBLIC_KEY_AFFINE_SIZE] {
     fn from(pubkey: &PubkeyProjective) -> Self {
-        let mut bytes = [0u8; BLS_PUBLIC_KEY_AFFINE_SIZE];
         let pubkey_affine: Pubkey = (*pubkey).into();
-        bytes.copy_from_slice(pubkey_affine.0.as_slice());
-        bytes
+        pubkey_affine.0
     }
 }
 
