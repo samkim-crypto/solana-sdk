@@ -123,7 +123,7 @@ impl Bls {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::keypair::Keypair};
+    use {super::*, crate::keypair::Keypair, std::vec};
 
     #[test]
     fn test_verify() {

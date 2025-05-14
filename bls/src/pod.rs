@@ -295,7 +295,7 @@ use impl_from_str;
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::keypair::Keypair, core::str::FromStr};
+    use {super::*, crate::keypair::Keypair, core::str::FromStr, std::string::ToString};
 
     #[test]
     fn pubkey_from_str() {
