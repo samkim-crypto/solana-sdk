@@ -1,9 +1,12 @@
-#[cfg(feature = "fs")]
+#[cfg(feature = "std")]
 use std::{
+    boxed::Box,
     error,
     fs::{self, File, OpenOptions},
     io::{Read, Write},
     path::Path,
+    string::String,
+    vec::Vec,
 };
 use {
     crate::{
@@ -15,10 +18,10 @@ use {
     },
     blst::{blst_keygen, blst_scalar},
     blstrs::{G1Affine, G1Projective, Scalar},
+    core::ptr,
     ff::Field,
     group::Group,
     rand::rngs::OsRng,
-    std::ptr,
 };
 #[cfg(feature = "solana-signer-derive")]
 use {solana_signature::Signature, solana_signer::Signer, subtle::ConstantTimeEq};
@@ -284,7 +287,7 @@ impl From<&Keypair> for [u8; BLS_KEYPAIR_SIZE] {
     }
 }
 
-#[cfg(feature = "fs")]
+#[cfg(feature = "std")]
 impl Keypair {
     pub fn read_json<R: Read>(reader: &mut R) -> Result<Self, Box<dyn error::Error>> {
         let bytes: Vec<u8> = serde_json::from_reader(reader)?;
@@ -361,7 +364,7 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "fs")]
+    #[cfg(feature = "std")]
     fn test_keypair_file() {
         let temp_keypair_file = NamedTempFile::new().unwrap();
         let original_keypair = Keypair::new();

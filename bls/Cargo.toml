@@ -37,19 +37,20 @@ subtle = { workspace = true, optional = true }
 [dev-dependencies]
 bincode = { workspace = true }
 solana-keypair = { workspace = true }
-solana-bls = { path = ".", features = ["fs"] }
+solana-bls = { path = ".", features = ["std"] }
 tempfile = { workspace = true }
 
 [features]
 bytemuck = ["dep:bytemuck"]
+default = ["std"]
 frozen-abi = ["dep:solana-frozen-abi", "dep:solana-frozen-abi-macro"]
-fs = ["dep:serde_json"]
 serde = ["dep:cfg_eval", "dep:serde", "dep:serde_with"]
 solana-signer-derive = [
     "dep:solana-signer",
     "dep:solana-signature",
     "dep:subtle",
 ]
+std = ["dep:serde_json"]
 
 [lib]
 crate-type = ["rlib"]
