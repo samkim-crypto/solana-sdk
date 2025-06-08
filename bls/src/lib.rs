@@ -6,13 +6,13 @@ extern crate std;
 #[cfg(not(target_os = "solana"))]
 pub use crate::{
     error::BlsError,
+    keypair::Keypair,
     proof_of_possession::ProofOfPossessionProjective,
     pubkey::PubkeyProjective,
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::SignatureProjective,
 };
 pub use crate::{
-    keypair::Keypair,
     proof_of_possession::{
         ProofOfPossession, ProofOfPossessionCompressed, BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
         BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE,
@@ -35,10 +35,8 @@ pub mod keypair;
 pub(crate) mod macros;
 #[cfg(not(target_os = "solana"))]
 pub mod hash;
-pub mod pod;
-#[cfg(not(target_os = "solana"))]
 pub mod proof_of_possession;
 pub mod pubkey;
-pub mod secret_key;
 #[cfg(not(target_os = "solana"))]
+pub mod secret_key;
 pub mod signature;

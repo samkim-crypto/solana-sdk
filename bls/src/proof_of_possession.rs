@@ -1,9 +1,12 @@
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
+#[cfg(not(target_os = "solana"))]
 use {
     crate::{error::BlsError, pubkey::PubkeyProjective},
-    base64::{prelude::BASE64_STANDARD, Engine},
     blstrs::{G2Affine, G2Projective},
+};
+use {
+    base64::{prelude::BASE64_STANDARD, Engine},
     core::fmt,
 };
 #[cfg(feature = "serde")]
@@ -30,8 +33,10 @@ pub const BLS_PROOF_OF_POSSESSION_AFFINE_SIZE: usize = 192;
 pub const BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A BLS proof of possession in a projective point representation
+#[cfg(not(target_os = "solana"))]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct ProofOfPossessionProjective(pub(crate) G2Projective);
+#[cfg(not(target_os = "solana"))]
 impl ProofOfPossessionProjective {
     /// Verify a proof of possession against a public key
     pub fn verify(&self, public_key: &PubkeyProjective) -> bool {
@@ -39,12 +44,14 @@ impl ProofOfPossessionProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl From<ProofOfPossessionProjective> for ProofOfPossession {
     fn from(proof: ProofOfPossessionProjective) -> Self {
         Self(proof.0.to_uncompressed())
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl TryFrom<ProofOfPossession> for ProofOfPossessionProjective {
     type Error = BlsError;
 
@@ -53,6 +60,7 @@ impl TryFrom<ProofOfPossession> for ProofOfPossessionProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl TryFrom<&ProofOfPossession> for ProofOfPossessionProjective {
     type Error = BlsError;
 

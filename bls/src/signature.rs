@@ -1,11 +1,14 @@
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
+#[cfg(not(target_os = "solana"))]
 use {
     crate::{error::BlsError, pubkey::PubkeyProjective},
-    base64::{prelude::BASE64_STANDARD, Engine},
     blstrs::{G2Affine, G2Projective},
-    core::fmt,
     group::Group,
+};
+use {
+    base64::{prelude::BASE64_STANDARD, Engine},
+    core::fmt,
 };
 #[cfg(feature = "serde")]
 use {
@@ -26,15 +29,18 @@ pub const BLS_SIGNATURE_AFFINE_SIZE: usize = 192;
 pub const BLS_SIGNATURE_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A BLS signature in a projective point representation
+#[cfg(not(target_os = "solana"))]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct SignatureProjective(pub(crate) G2Projective);
 
+#[cfg(not(target_os = "solana"))]
 impl Default for SignatureProjective {
     fn default() -> Self {
         Self(G2Projective::identity())
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl SignatureProjective {
     /// Verify a signature against a message and a public key
     pub fn verify(&self, pubkey: &PubkeyProjective, message: &[u8]) -> bool {
@@ -88,12 +94,14 @@ impl SignatureProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl From<SignatureProjective> for Signature {
     fn from(proof: SignatureProjective) -> Self {
         Self(proof.0.to_uncompressed())
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl TryFrom<Signature> for SignatureProjective {
     type Error = BlsError;
 
@@ -104,6 +112,7 @@ impl TryFrom<Signature> for SignatureProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl TryFrom<&Signature> for SignatureProjective {
     type Error = BlsError;
 

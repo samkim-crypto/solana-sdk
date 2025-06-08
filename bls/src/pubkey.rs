@@ -1,5 +1,6 @@
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
+#[cfg(not(target_os = "solana"))]
 use {
     crate::{
         error::BlsError,
@@ -34,15 +35,18 @@ pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A BLS public key in a projective point representation
+#[cfg(not(target_os = "solana"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct PubkeyProjective(pub(crate) G1Projective);
 
+#[cfg(not(target_os = "solana"))]
 impl Default for PubkeyProjective {
     fn default() -> Self {
         Self(G1Projective::identity())
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl PubkeyProjective {
     /// Construct a corresponding `BlsPubkey` for a `BlsSecretKey`
     #[allow(clippy::arithmetic_side_effects)]
@@ -97,12 +101,14 @@ impl PubkeyProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl From<PubkeyProjective> for Pubkey {
     fn from(proof: PubkeyProjective) -> Self {
         Self(proof.0.to_uncompressed())
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl TryFrom<Pubkey> for PubkeyProjective {
     type Error = BlsError;
 
@@ -111,6 +117,7 @@ impl TryFrom<Pubkey> for PubkeyProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl TryFrom<&Pubkey> for PubkeyProjective {
     type Error = BlsError;
 
@@ -121,6 +128,7 @@ impl TryFrom<&Pubkey> for PubkeyProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl TryFrom<&[u8]> for PubkeyProjective {
     type Error = BlsError;
     fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
@@ -134,6 +142,7 @@ impl TryFrom<&[u8]> for PubkeyProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
 impl From<&PubkeyProjective> for [u8; BLS_PUBLIC_KEY_AFFINE_SIZE] {
     fn from(pubkey: &PubkeyProjective) -> Self {
         let pubkey_affine: Pubkey = (*pubkey).into();
