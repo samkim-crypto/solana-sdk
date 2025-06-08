@@ -1,8 +1,7 @@
 use crate::{
     error::BlsError,
     proof_of_possession::ProofOfPossessionProjective,
-    pubkey::PubkeyProjective,
-    pubkey::BLS_PUBLIC_KEY_AFFINE_SIZE,
+    pubkey::{PubkeyProjective, BLS_PUBLIC_KEY_AFFINE_SIZE},
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::SignatureProjective,
 };
