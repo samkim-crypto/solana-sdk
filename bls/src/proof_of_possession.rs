@@ -1,7 +1,7 @@
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 use {
-    crate::{error::BlsError, pubkey::PubkeyProjective, Bls},
+    crate::{error::BlsError, pubkey::PubkeyProjective},
     base64::{prelude::BASE64_STANDARD, Engine},
     blstrs::{G2Affine, G2Projective},
     core::fmt,
@@ -11,6 +11,11 @@ use {
     serde::{Deserialize, Serialize},
     serde_with::serde_as,
 };
+
+/// Domain separation tag used when hashing public keys to G2 in the proof of
+/// possession signing and verification functions. See
+/// https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-05#section-4.2.3.
+pub const POP_DST: &[u8] = b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_";
 
 /// Size of a BLS proof of possession in a compressed point representation
 pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
@@ -30,7 +35,7 @@ pub struct ProofOfPossessionProjective(pub(crate) G2Projective);
 impl ProofOfPossessionProjective {
     /// Verify a proof of possession against a public key
     pub fn verify(&self, public_key: &PubkeyProjective) -> bool {
-        Bls::verify_proof_of_possession(public_key, self)
+        public_key.verify_proof_of_possession(self)
     }
 }
 
@@ -143,7 +148,14 @@ mod bytemuck_impls {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, core::str::FromStr, std::string::ToString};
+    use {super::*, crate::keypair::Keypair, core::str::FromStr, std::string::ToString};
+
+    #[test]
+    fn test_proof_of_possession() {
+        let keypair = Keypair::new();
+        let proof = keypair.proof_of_possession();
+        assert!(keypair.public.verify_proof_of_possession(&proof));
+    }
 
     #[test]
     fn proof_of_possession_from_str() {

@@ -5,7 +5,6 @@ use crate::{
     pubkey::BLS_PUBLIC_KEY_AFFINE_SIZE,
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::SignatureProjective,
-    Bls,
 };
 #[cfg(feature = "solana-signer-derive")]
 use solana_signer::Signer;
@@ -56,17 +55,17 @@ impl Keypair {
 
     /// Generate a proof of possession for the given keypair
     pub fn proof_of_possession(&self) -> ProofOfPossessionProjective {
-        Bls::generate_proof_of_possession(&self.secret, &self.public)
+        self.secret.proof_of_possession()
     }
 
     /// Sign a message using the provided secret key
     pub fn sign(&self, message: &[u8]) -> SignatureProjective {
-        Bls::sign(&self.secret, message)
+        self.secret.sign(message)
     }
 
     /// Verify a signature against a message and a public key
     pub fn verify(&self, signature: &SignatureProjective, message: &[u8]) -> bool {
-        Bls::verify(&self.public, signature, message)
+        self.public.verify(signature, message)
     }
 }
 

@@ -1,7 +1,7 @@
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 use {
-    crate::{error::BlsError, pubkey::PubkeyProjective, Bls},
+    crate::{error::BlsError, pubkey::PubkeyProjective},
     base64::{prelude::BASE64_STANDARD, Engine},
     blstrs::{G2Affine, G2Projective},
     core::fmt,
@@ -38,7 +38,7 @@ impl Default for SignatureProjective {
 impl SignatureProjective {
     /// Verify a signature against a message and a public key
     pub fn verify(&self, pubkey: &PubkeyProjective, message: &[u8]) -> bool {
-        Bls::verify(pubkey, self, message)
+        pubkey.verify(self, message)
     }
 
     /// Aggregate a list of signatures into an existing aggregate
@@ -69,6 +69,22 @@ impl SignatureProjective {
         } else {
             Err(BlsError::EmptyAggregation)
         }
+    }
+
+    /// Verify a list of signatures against a message and a list of public keys
+    pub fn aggregate_verify<'a, I, J>(
+        public_keys: I,
+        signatures: J,
+        message: &[u8],
+    ) -> Result<bool, BlsError>
+    where
+        I: IntoIterator<Item = &'a PubkeyProjective>,
+        J: IntoIterator<Item = &'a SignatureProjective>,
+    {
+        let aggregate_pubkey = PubkeyProjective::aggregate(public_keys)?;
+        let aggregate_signature = SignatureProjective::aggregate(signatures)?;
+
+        Ok(aggregate_pubkey.verify(&aggregate_signature, message))
     }
 }
 
@@ -177,7 +193,12 @@ mod bytemuck_impls {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::keypair::Keypair, core::str::FromStr, std::string::ToString};
+    use {
+        super::*,
+        crate::keypair::Keypair,
+        core::str::FromStr,
+        std::{string::ToString, vec},
+    };
 
     #[test]
     fn test_signature_aggregate() {
@@ -196,6 +217,64 @@ mod tests {
         aggregate_signature_with.aggregate_with([&signature1]);
 
         assert_eq!(aggregate_signature, aggregate_signature_with);
+    }
+
+    #[test]
+    fn test_aggregate_verify() {
+        let test_message = b"test message";
+
+        let keypair0 = Keypair::new();
+        let signature0 = keypair0.sign(test_message);
+        assert!(keypair0.public.verify(&signature0, test_message));
+
+        let keypair1 = Keypair::new();
+        let signature1 = keypair1.secret.sign(test_message);
+        assert!(keypair1.public.verify(&signature1, test_message));
+
+        // basic case
+        assert!(SignatureProjective::aggregate_verify(
+            vec![&keypair0.public, &keypair1.public],
+            vec![&signature0, &signature1],
+            test_message,
+        )
+        .unwrap());
+
+        // pre-aggregate the signatures
+        let aggregate_signature =
+            SignatureProjective::aggregate([&signature0, &signature1]).unwrap();
+        assert!(SignatureProjective::aggregate_verify(
+            vec![&keypair0.public, &keypair1.public],
+            vec![&aggregate_signature],
+            test_message,
+        )
+        .unwrap());
+
+        // pre-aggregate the public keys
+        let aggregate_pubkey =
+            PubkeyProjective::aggregate([&keypair0.public, &keypair1.public]).unwrap();
+        assert!(SignatureProjective::aggregate_verify(
+            vec![&aggregate_pubkey],
+            vec![&signature0, &signature1],
+            test_message,
+        )
+        .unwrap());
+
+        // empty set of public keys or signatures
+        let err = SignatureProjective::aggregate_verify(
+            vec![],
+            vec![&signature0, &signature1],
+            test_message,
+        )
+        .unwrap_err();
+        assert_eq!(err, BlsError::EmptyAggregation);
+
+        let err = SignatureProjective::aggregate_verify(
+            vec![&keypair0.public, &keypair1.public],
+            vec![],
+            test_message,
+        )
+        .unwrap_err();
+        assert_eq!(err, BlsError::EmptyAggregation);
     }
 
     #[test]

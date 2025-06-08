@@ -2,11 +2,14 @@
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 use {
     crate::{
-        error::BlsError, proof_of_possession::ProofOfPossessionProjective, secret_key::SecretKey,
-        signature::SignatureProjective, Bls,
+        error::BlsError,
+        hash::{hash_message_to_point, hash_pubkey_to_g2},
+        proof_of_possession::ProofOfPossessionProjective,
+        secret_key::SecretKey,
+        signature::SignatureProjective,
     },
-    blstrs::{G1Affine, G1Projective},
-    group::Group,
+    blstrs::{pairing, G1Affine, G1Projective},
+    group::{prime::PrimeCurveAffine, Group},
 };
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
@@ -48,13 +51,19 @@ impl PubkeyProjective {
     }
 
     /// Verify a signature against a message and a public key
+    ///
+    /// TODO: Verify by invoking pairing just once
     pub fn verify(&self, signature: &SignatureProjective, message: &[u8]) -> bool {
-        Bls::verify(self, signature, message)
+        let hashed_message = hash_message_to_point(message);
+        pairing(&self.0.into(), &hashed_message.into())
+            == pairing(&G1Affine::generator(), &signature.0.into())
     }
 
     /// Verify a proof of possession against a public key
     pub fn verify_proof_of_possession(&self, proof: &ProofOfPossessionProjective) -> bool {
-        Bls::verify_proof_of_possession(self, proof)
+        let hashed_pubkey_bytes = hash_pubkey_to_g2(self);
+        pairing(&self.0.into(), &hashed_pubkey_bytes.into())
+            == pairing(&G1Affine::generator(), &proof.0.into())
     }
 
     /// Aggregate a list of public keys into an existing aggregate
@@ -214,6 +223,14 @@ mod bytemuck_impls {
 #[cfg(test)]
 mod tests {
     use {super::*, crate::keypair::Keypair, core::str::FromStr, std::string::ToString};
+
+    #[test]
+    fn test_verify() {
+        let keypair = Keypair::new();
+        let test_message = b"test message";
+        let signature = keypair.sign(test_message);
+        assert!(keypair.public.verify(&signature, test_message));
+    }
 
     #[test]
     fn pubkey_from_str() {
