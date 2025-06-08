@@ -9,6 +9,17 @@ homepage = { workspace = true }
 license = { workspace = true }
 edition = { workspace = true }
 
+[lib]
+crate-type = ["rlib"]
+
+[features]
+bytemuck = ["dep:bytemuck"]
+default = ["std"]
+frozen-abi = ["dep:solana-frozen-abi", "dep:solana-frozen-abi-macro", "std"]
+serde = ["dep:cfg_eval", "dep:serde", "dep:serde_with"]
+solana-signer-derive = ["dep:solana-signer", "dep:solana-signature", "dep:subtle"]
+std = ["dep:serde_json"]
+
 [dependencies]
 base64 = { workspace = true }
 bytemuck = { workspace = true, optional = true }
@@ -39,21 +50,6 @@ bincode = { workspace = true }
 solana-bls = { path = ".", features = ["std"] }
 solana-keypair = { workspace = true }
 tempfile = { workspace = true }
-
-[features]
-bytemuck = ["dep:bytemuck"]
-default = ["std"]
-frozen-abi = ["dep:solana-frozen-abi", "dep:solana-frozen-abi-macro", "std"]
-serde = ["dep:cfg_eval", "dep:serde", "dep:serde_with"]
-solana-signer-derive = [
-    "dep:solana-signer",
-    "dep:solana-signature",
-    "dep:subtle",
-]
-std = ["dep:serde_json"]
-
-[lib]
-crate-type = ["rlib"]
 
 [lints]
 workspace = true
