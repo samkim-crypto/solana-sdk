@@ -12,6 +12,7 @@ pub use crate::{
     signature::SignatureProjective,
 };
 pub use crate::{
+    keypair::Keypair,
     proof_of_possession::{
         ProofOfPossession, ProofOfPossessionCompressed, BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
         BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE,

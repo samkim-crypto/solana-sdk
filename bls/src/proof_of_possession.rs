@@ -143,7 +143,7 @@ mod bytemuck_impls {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::keypair::Keypair, core::str::FromStr, std::string::ToString};
+    use {super::*, core::str::FromStr, std::string::ToString};
 
     #[test]
     fn proof_of_possession_from_str() {
