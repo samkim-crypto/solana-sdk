@@ -3,18 +3,25 @@
 
 #[cfg(feature = "std")]
 extern crate std;
-pub use crate::pod::{
-    ProofOfPossession, ProofOfPossessionCompressed, Pubkey, PubkeyCompressed, Signature,
-    SignatureCompressed, BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
-    BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE, BLS_PUBLIC_KEY_AFFINE_SIZE,
-    BLS_PUBLIC_KEY_COMPRESSED_SIZE, BLS_SIGNATURE_AFFINE_SIZE, BLS_SIGNATURE_COMPRESSED_SIZE,
-};
 #[cfg(not(target_os = "solana"))]
 pub use crate::{
     error::BlsError,
-    keypair::{PubkeyProjective, SecretKey, BLS_SECRET_KEY_SIZE},
     proof_of_possession::ProofOfPossessionProjective,
+    pubkey::PubkeyProjective,
+    secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::SignatureProjective,
+};
+pub use crate::{
+    proof_of_possession::{
+        ProofOfPossession, ProofOfPossessionCompressed, BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
+        BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE,
+    },
+    pubkey::{
+        Pubkey, PubkeyCompressed, BLS_PUBLIC_KEY_AFFINE_SIZE, BLS_PUBLIC_KEY_COMPRESSED_SIZE,
+    },
+    signature::{
+        Signature, SignatureCompressed, BLS_SIGNATURE_AFFINE_SIZE, BLS_SIGNATURE_COMPRESSED_SIZE,
+    },
 };
 #[cfg(not(target_os = "solana"))]
 use {
@@ -28,9 +35,13 @@ use {
 pub mod error;
 #[cfg(not(target_os = "solana"))]
 pub mod keypair;
+#[macro_use]
+pub(crate) mod macros;
 pub mod pod;
 #[cfg(not(target_os = "solana"))]
 pub mod proof_of_possession;
+pub mod pubkey;
+pub mod secret_key;
 #[cfg(not(target_os = "solana"))]
 pub mod signature;
 
