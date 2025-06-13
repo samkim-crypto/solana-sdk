@@ -222,9 +222,9 @@ impl TryFrom<&SignatureCompressed> for Signature {
     type Error = BlsError;
 
     fn try_from(signature: &SignatureCompressed) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&signature.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.to_uncompressed()))
+        let maybe_compressed: Option<G2Affine> = G2Affine::from_compressed(&signature.0).into();
+        let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
+        Ok(Self(compressed.to_uncompressed()))
     }
 }
 

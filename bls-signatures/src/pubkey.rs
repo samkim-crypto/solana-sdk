@@ -252,9 +252,9 @@ impl TryFrom<&PubkeyCompressed> for Pubkey {
     type Error = BlsError;
 
     fn try_from(pubkey: &PubkeyCompressed) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G1Affine> = G1Affine::from_compressed(&pubkey.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.to_uncompressed()))
+        let maybe_compressed: Option<G1Affine> = G1Affine::from_compressed(&pubkey.0).into();
+        let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
+        Ok(Self(compressed.to_uncompressed()))
     }
 }
 
