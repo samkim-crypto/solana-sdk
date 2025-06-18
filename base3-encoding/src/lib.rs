@@ -103,13 +103,17 @@ pub fn encode(
 
         // Iterate over corresponding bits in the chunk
         for (base_bit, fallback_bit) in base_chunk.iter().zip(fallback_chunk.iter()) {
-            block_num *= 3;
-            block_num += match (*base_bit, *fallback_bit) {
+            let chunk_num = match (*base_bit, *fallback_bit) {
                 (false, false) => 0u128,
                 (true, false) => 1u128,
                 (false, true) => 2u128,
                 (true, true) => return Err(EncodeError::InvalidBitCombination),
             };
+            block_num = block_num
+                .checked_mul(3)
+                .ok_or(EncodeError::ArithmeticOverflow)?
+                .checked_add(chunk_num)
+                .ok_or(EncodeError::ArithmeticOverflow)?;
         }
 
         result.extend_from_slice(&block_num.to_be_bytes());
