@@ -34,13 +34,27 @@ pub const BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A BLS proof of possession in a projective point representation
 #[cfg(not(target_os = "solana"))]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProofOfPossessionProjective(pub(crate) G2Projective);
 #[cfg(not(target_os = "solana"))]
 impl ProofOfPossessionProjective {
     /// Verify a proof of possession against a public key
     pub fn verify(&self, public_key: &PubkeyProjective) -> bool {
         public_key.verify_proof_of_possession(self)
+    }
+}
+
+/// A trait for types that can be converted into a `ProofOfPossessionProjective` for verification
+#[cfg(not(target_os = "solana"))]
+pub trait AsProofOfPossessionProjective {
+    /// Attempt to convert the type into a `ProofOfPossessionProjective`
+    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError>;
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsProofOfPossessionProjective for ProofOfPossessionProjective {
+    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
+        Ok(*self)
     }
 }
 
@@ -75,6 +89,13 @@ impl TryFrom<&ProofOfPossession> for ProofOfPossessionProjective {
         let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&proof.0).into();
         let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(uncompressed.into()))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsProofOfPossessionProjective for ProofOfPossession {
+    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
+        ProofOfPossessionProjective::try_from(self)
     }
 }
 
@@ -179,6 +200,13 @@ impl TryFrom<&ProofOfPossessionCompressed> for ProofOfPossession {
         let maybe_compressed: Option<G2Affine> = G2Affine::from_compressed(&proof.0).into();
         let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(compressed.to_uncompressed()))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsProofOfPossessionProjective for ProofOfPossessionCompressed {
+    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
+        ProofOfPossession::try_from(self)?.try_as_projective()
     }
 }
 

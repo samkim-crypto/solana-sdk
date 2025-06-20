@@ -30,7 +30,7 @@ pub const BLS_SIGNATURE_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A BLS signature in a projective point representation
 #[cfg(not(target_os = "solana"))]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct SignatureProjective(pub(crate) G2Projective);
 
 #[cfg(not(target_os = "solana"))]
@@ -94,6 +94,20 @@ impl SignatureProjective {
     }
 }
 
+/// A trait for types that can be converted into a `SignatureProjective` for verification
+#[cfg(not(target_os = "solana"))]
+pub trait AsSignatureProjective {
+    /// Attempt to convert the type into a `SignatureProjective`
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError>;
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsSignatureProjective for SignatureProjective {
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
+        Ok(*self)
+    }
+}
+
 #[cfg(not(target_os = "solana"))]
 impl From<SignatureProjective> for Signature {
     fn from(signature: SignatureProjective) -> Self {
@@ -127,6 +141,13 @@ impl TryFrom<&Signature> for SignatureProjective {
         let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&signature.0).into();
         let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(uncompressed.into()))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsSignatureProjective for Signature {
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
+        SignatureProjective::try_from(self)
     }
 }
 
@@ -225,6 +246,13 @@ impl TryFrom<&SignatureCompressed> for Signature {
         let maybe_compressed: Option<G2Affine> = G2Affine::from_compressed(&signature.0).into();
         let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(compressed.to_uncompressed()))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsSignatureProjective for SignatureCompressed {
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
+        Signature::try_from(self)?.try_as_projective()
     }
 }
 

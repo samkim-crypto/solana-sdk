@@ -101,6 +101,20 @@ impl PubkeyProjective {
     }
 }
 
+/// A trait for types that can be converted into a `PubkeyProjective` for verification
+#[cfg(not(target_os = "solana"))]
+pub trait AsPubkeyProjective {
+    /// Attempt to convert the type into a `PubkeyProjective`
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError>;
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsPubkeyProjective for PubkeyProjective {
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
+        Ok(*self)
+    }
+}
+
 #[cfg(not(target_os = "solana"))]
 impl From<PubkeyProjective> for Pubkey {
     fn from(pubkey: PubkeyProjective) -> Self {
@@ -132,6 +146,12 @@ impl TryFrom<&Pubkey> for PubkeyProjective {
         let maybe_uncompressed: Option<G1Affine> = G1Affine::from_uncompressed(&pubkey.0).into();
         let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(uncompressed.into()))
+    }
+}
+#[cfg(not(target_os = "solana"))]
+impl AsPubkeyProjective for Pubkey {
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
+        PubkeyProjective::try_from(self)
     }
 }
 
@@ -255,6 +275,13 @@ impl TryFrom<&PubkeyCompressed> for Pubkey {
         let maybe_compressed: Option<G1Affine> = G1Affine::from_compressed(&pubkey.0).into();
         let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(compressed.to_uncompressed()))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsPubkeyProjective for PubkeyCompressed {
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
+        Pubkey::try_from(self)?.try_as_projective()
     }
 }
 
