@@ -5,9 +5,9 @@ use {
     crate::{
         error::BlsError,
         hash::{hash_message_to_point, hash_pubkey_to_g2},
-        proof_of_possession::AsProofOfPossessionProjective,
+        proof_of_possession::{AsProofOfPossessionProjective, ProofOfPossessionProjective},
         secret_key::SecretKey,
-        signature::AsSignatureProjective,
+        signature::{AsSignatureProjective, SignatureProjective},
     },
     blstrs::{pairing, G1Affine, G1Projective},
     group::{prime::PrimeCurveAffine, Group},
@@ -48,6 +48,20 @@ impl Default for PubkeyProjective {
 
 #[cfg(not(target_os = "solana"))]
 impl PubkeyProjective {
+    /// Verify a signature and a message against a public key
+    fn _verify_signature(&self, signature: &SignatureProjective, message: &[u8]) -> bool {
+        let hashed_message = hash_message_to_point(message);
+        pairing(&self.0.into(), &hashed_message.into())
+            == pairing(&G1Affine::generator(), &signature.0.into())
+    }
+
+    /// Verify a proof of possession against a public key
+    fn _verify_proof_of_possession(&self, proof: &ProofOfPossessionProjective) -> bool {
+        let hashed_pubkey_bytes = hash_pubkey_to_g2(self);
+        pairing(&self.0.into(), &hashed_pubkey_bytes.into())
+            == pairing(&G1Affine::generator(), &proof.0.into())
+    }
+
     /// Construct a corresponding `BlsPubkey` for a `BlsSecretKey`
     #[allow(clippy::arithmetic_side_effects)]
     pub fn from_secret(secret: &SecretKey) -> Self {
@@ -97,9 +111,7 @@ pub trait VerifiablePubkey: AsPubkeyProjective {
     ) -> Result<bool, BlsError> {
         let pubkey_projective = self.try_as_projective()?;
         let signature_projective = signature.try_as_projective()?;
-        let hashed_message = hash_message_to_point(message);
-        Ok(pairing(&pubkey_projective.0.into(), &hashed_message.into())
-            == pairing(&G1Affine::generator(), &signature_projective.0.into()))
+        Ok(pubkey_projective._verify_signature(&signature_projective, message))
     }
 
     /// Uses a public key to verify any convertible proof of possession type
@@ -111,11 +123,7 @@ pub trait VerifiablePubkey: AsPubkeyProjective {
     ) -> Result<bool, BlsError> {
         let pubkey_projective = self.try_as_projective()?;
         let proof_projective = proof.try_as_projective()?;
-        let hashed_pubkey_bytes = hash_pubkey_to_g2(&pubkey_projective);
-        Ok(
-            pairing(&pubkey_projective.0.into(), &hashed_pubkey_bytes.into())
-                == pairing(&G1Affine::generator(), &proof_projective.0.into()),
-        )
+        Ok(pubkey_projective._verify_proof_of_possession(&proof_projective))
     }
 }
 
