@@ -311,7 +311,9 @@ impl TryFrom<&PubkeyCompressed> for Pubkey {
 #[cfg(not(target_os = "solana"))]
 impl AsPubkeyProjective for PubkeyCompressed {
     fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
-        Pubkey::try_from(self)?.try_as_projective()
+        let maybe_uncompressed: Option<G1Affine> = G1Affine::from_compressed(&self.0).into();
+        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
+        Ok(PubkeyProjective(uncompressed.into()))
     }
 }
 

@@ -218,7 +218,9 @@ impl TryFrom<&ProofOfPossessionCompressed> for ProofOfPossession {
 #[cfg(not(target_os = "solana"))]
 impl AsProofOfPossessionProjective for ProofOfPossessionCompressed {
     fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
-        ProofOfPossession::try_from(self)?.try_as_projective()
+        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&self.0).into();
+        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
+        Ok(ProofOfPossessionProjective(uncompressed.into()))
     }
 }
 

@@ -263,7 +263,9 @@ impl TryFrom<&SignatureCompressed> for Signature {
 #[cfg(not(target_os = "solana"))]
 impl AsSignatureProjective for SignatureCompressed {
     fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
-        Signature::try_from(self)?.try_as_projective()
+        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&self.0).into();
+        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
+        Ok(SignatureProjective(uncompressed.into()))
     }
 }
 
