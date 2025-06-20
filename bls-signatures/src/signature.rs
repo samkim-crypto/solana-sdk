@@ -103,7 +103,7 @@ pub trait VerifiableSignature: AsSignatureProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl VerifiableSignature for SignatureProjective {}
+impl<T: AsSignatureProjective> VerifiableSignature for T {}
 
 /// A trait for types that can be converted into a `SignatureProjective` for verification
 #[cfg(not(target_os = "solana"))]
@@ -161,9 +161,6 @@ impl AsSignatureProjective for Signature {
         SignatureProjective::try_from(self)
     }
 }
-
-#[cfg(not(target_os = "solana"))]
-impl VerifiableSignature for Signature {}
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -269,9 +266,6 @@ impl AsSignatureProjective for SignatureCompressed {
         Signature::try_from(self)?.try_as_projective()
     }
 }
-
-#[cfg(not(target_os = "solana"))]
-impl VerifiableSignature for SignatureCompressed {}
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.

@@ -120,7 +120,7 @@ pub trait VerifiablePubkey: AsPubkeyProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl VerifiablePubkey for PubkeyProjective {}
+impl<T: AsPubkeyProjective> VerifiablePubkey for T {}
 
 /// A trait for types that can be converted into a `PubkeyProjective` for verification
 #[cfg(not(target_os = "solana"))]
@@ -198,9 +198,6 @@ impl From<&PubkeyProjective> for [u8; BLS_PUBLIC_KEY_AFFINE_SIZE] {
         pubkey_affine.0
     }
 }
-
-#[cfg(not(target_os = "solana"))]
-impl VerifiablePubkey for Pubkey {}
 
 /// A serialized BLS public key in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -309,9 +306,6 @@ impl AsPubkeyProjective for PubkeyCompressed {
         Pubkey::try_from(self)?.try_as_projective()
     }
 }
-
-#[cfg(not(target_os = "solana"))]
-impl VerifiablePubkey for PubkeyCompressed {}
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.

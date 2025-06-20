@@ -54,7 +54,7 @@ pub trait VerifiableProofOfPossession: AsProofOfPossessionProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl VerifiableProofOfPossession for ProofOfPossessionProjective {}
+impl<T: AsProofOfPossessionProjective> VerifiableProofOfPossession for T {}
 
 /// A trait for types that can be converted into a `ProofOfPossessionProjective` for verification
 #[cfg(not(target_os = "solana"))]
@@ -110,9 +110,6 @@ impl AsProofOfPossessionProjective for ProofOfPossession {
         ProofOfPossessionProjective::try_from(self)
     }
 }
-
-#[cfg(not(target_os = "solana"))]
-impl VerifiableProofOfPossession for ProofOfPossession {}
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -224,9 +221,6 @@ impl AsProofOfPossessionProjective for ProofOfPossessionCompressed {
         ProofOfPossession::try_from(self)?.try_as_projective()
     }
 }
-
-#[cfg(not(target_os = "solana"))]
-impl VerifiableProofOfPossession for ProofOfPossessionCompressed {}
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.
