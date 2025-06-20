@@ -2,7 +2,10 @@
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 #[cfg(not(target_os = "solana"))]
 use {
-    crate::{error::BlsError, pubkey::PubkeyProjective},
+    crate::{
+        error::BlsError,
+        pubkey::{AsPubkeyProjective, VerifiablePubkey},
+    },
     blstrs::{G2Affine, G2Projective},
 };
 use {
@@ -36,13 +39,22 @@ pub const BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE: usize = 256;
 #[cfg(not(target_os = "solana"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProofOfPossessionProjective(pub(crate) G2Projective);
+
+/// A behavior trait that provides the `.verify()` method
 #[cfg(not(target_os = "solana"))]
-impl ProofOfPossessionProjective {
-    /// Verify a proof of possession against a public key
-    pub fn verify(&self, public_key: &PubkeyProjective) -> bool {
-        public_key.verify_proof_of_possession(self)
+pub trait VerifiableProofOfPossession: AsProofOfPossessionProjective {
+    /// Verifies the proof against any convertible public key type.
+    ///
+    /// The logic is defined here once and is inherited by all implementors
+    fn verify<P: AsPubkeyProjective>(&self, pubkey: &P) -> Result<bool, BlsError> {
+        let proof_projective = self.try_as_projective()?;
+        let pubkey_projective = pubkey.try_as_projective()?;
+        pubkey_projective.verify_proof_of_possession(&proof_projective)
     }
 }
+
+#[cfg(not(target_os = "solana"))]
+impl VerifiableProofOfPossession for ProofOfPossessionProjective {}
 
 /// A trait for types that can be converted into a `ProofOfPossessionProjective` for verification
 #[cfg(not(target_os = "solana"))]
@@ -98,6 +110,9 @@ impl AsProofOfPossessionProjective for ProofOfPossession {
         ProofOfPossessionProjective::try_from(self)
     }
 }
+
+#[cfg(not(target_os = "solana"))]
+impl VerifiableProofOfPossession for ProofOfPossession {}
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -210,6 +225,9 @@ impl AsProofOfPossessionProjective for ProofOfPossessionCompressed {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
+impl VerifiableProofOfPossession for ProofOfPossessionCompressed {}
+
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.
 // Directly implement these traits for types that are simple wrappers around
@@ -231,13 +249,39 @@ mod bytemuck_impls {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::keypair::Keypair, core::str::FromStr, std::string::ToString};
+    use {
+        super::*,
+        crate::{
+            keypair::Keypair,
+            pubkey::{Pubkey, PubkeyCompressed},
+        },
+        core::str::FromStr,
+        std::string::ToString,
+    };
 
     #[test]
     fn test_proof_of_possession() {
         let keypair = Keypair::new();
-        let proof = keypair.proof_of_possession();
-        assert!(keypair.public.verify_proof_of_possession(&proof));
+        let proof_projective = keypair.proof_of_possession();
+
+        let pubkey_projective = keypair.public;
+        let pubkey_affine: Pubkey = pubkey_projective.into();
+        let pubkey_compressed: PubkeyCompressed = pubkey_affine.try_into().unwrap();
+
+        let proof_affine: ProofOfPossession = proof_projective.into();
+        let proof_compressed: ProofOfPossessionCompressed = proof_affine.try_into().unwrap();
+
+        assert!(proof_projective.verify(&pubkey_projective).unwrap());
+        assert!(proof_affine.verify(&pubkey_projective).unwrap());
+        assert!(proof_compressed.verify(&pubkey_projective).unwrap());
+
+        assert!(proof_projective.verify(&pubkey_affine).unwrap());
+        assert!(proof_affine.verify(&pubkey_affine).unwrap());
+        assert!(proof_compressed.verify(&pubkey_affine).unwrap());
+
+        assert!(proof_projective.verify(&pubkey_compressed).unwrap());
+        assert!(proof_affine.verify(&pubkey_compressed).unwrap());
+        assert!(proof_compressed.verify(&pubkey_compressed).unwrap());
     }
 
     #[test]

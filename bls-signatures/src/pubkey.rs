@@ -5,9 +5,9 @@ use {
     crate::{
         error::BlsError,
         hash::{hash_message_to_point, hash_pubkey_to_g2},
-        proof_of_possession::ProofOfPossessionProjective,
+        proof_of_possession::AsProofOfPossessionProjective,
         secret_key::SecretKey,
-        signature::SignatureProjective,
+        signature::AsSignatureProjective,
     },
     blstrs::{pairing, G1Affine, G1Projective},
     group::{prime::PrimeCurveAffine, Group},
@@ -54,22 +54,6 @@ impl PubkeyProjective {
         Self(G1Projective::generator() * secret.0)
     }
 
-    /// Verify a signature against a message and a public key
-    ///
-    /// TODO: Verify by invoking pairing just once
-    pub fn verify(&self, signature: &SignatureProjective, message: &[u8]) -> bool {
-        let hashed_message = hash_message_to_point(message);
-        pairing(&self.0.into(), &hashed_message.into())
-            == pairing(&G1Affine::generator(), &signature.0.into())
-    }
-
-    /// Verify a proof of possession against a public key
-    pub fn verify_proof_of_possession(&self, proof: &ProofOfPossessionProjective) -> bool {
-        let hashed_pubkey_bytes = hash_pubkey_to_g2(self);
-        pairing(&self.0.into(), &hashed_pubkey_bytes.into())
-            == pairing(&G1Affine::generator(), &proof.0.into())
-    }
-
     /// Aggregate a list of public keys into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     pub fn aggregate_with<'a, I>(&mut self, pubkeys: I)
@@ -100,6 +84,43 @@ impl PubkeyProjective {
         }
     }
 }
+
+#[cfg(not(target_os = "solana"))]
+pub trait VerifiablePubkey: AsPubkeyProjective {
+    /// Uses a public key to verify any convertible signature type
+    ///
+    /// TODO: Verify by invoking pairing just once
+    fn verify_signature<S: AsSignatureProjective>(
+        &self,
+        signature: &S,
+        message: &[u8],
+    ) -> Result<bool, BlsError> {
+        let pubkey_projective = self.try_as_projective()?;
+        let signature_projective = signature.try_as_projective()?;
+        let hashed_message = hash_message_to_point(message);
+        Ok(pairing(&pubkey_projective.0.into(), &hashed_message.into())
+            == pairing(&G1Affine::generator(), &signature_projective.0.into()))
+    }
+
+    /// Uses a public key to verify any convertible proof of possession type
+    ///
+    /// TODO: Verify by invoking pairing just once
+    fn verify_proof_of_possession<P: AsProofOfPossessionProjective>(
+        &self,
+        proof: &P,
+    ) -> Result<bool, BlsError> {
+        let pubkey_projective = self.try_as_projective()?;
+        let proof_projective = proof.try_as_projective()?;
+        let hashed_pubkey_bytes = hash_pubkey_to_g2(&pubkey_projective);
+        Ok(
+            pairing(&pubkey_projective.0.into(), &hashed_pubkey_bytes.into())
+                == pairing(&G1Affine::generator(), &proof_projective.0.into()),
+        )
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl VerifiablePubkey for PubkeyProjective {}
 
 /// A trait for types that can be converted into a `PubkeyProjective` for verification
 #[cfg(not(target_os = "solana"))]
@@ -148,6 +169,7 @@ impl TryFrom<&Pubkey> for PubkeyProjective {
         Ok(Self(uncompressed.into()))
     }
 }
+
 #[cfg(not(target_os = "solana"))]
 impl AsPubkeyProjective for Pubkey {
     fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
@@ -176,6 +198,9 @@ impl From<&PubkeyProjective> for [u8; BLS_PUBLIC_KEY_AFFINE_SIZE] {
         pubkey_affine.0
     }
 }
+
+#[cfg(not(target_os = "solana"))]
+impl VerifiablePubkey for Pubkey {}
 
 /// A serialized BLS public key in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -285,6 +310,9 @@ impl AsPubkeyProjective for PubkeyCompressed {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
+impl VerifiablePubkey for PubkeyCompressed {}
+
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.
 // Directly implement these traits for types that are simple wrappers around
@@ -305,14 +333,102 @@ mod bytemuck_impls {
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::keypair::Keypair, core::str::FromStr, std::string::ToString};
+    use {
+        super::*,
+        crate::{
+            keypair::Keypair,
+            proof_of_possession::{ProofOfPossession, ProofOfPossessionCompressed},
+            signature::{Signature, SignatureCompressed},
+        },
+        core::str::FromStr,
+        std::string::ToString,
+    };
 
     #[test]
-    fn test_verify() {
+    fn test_pubkey_verify_signature() {
         let keypair = Keypair::new();
         let test_message = b"test message";
-        let signature = keypair.sign(test_message);
-        assert!(keypair.public.verify(&signature, test_message));
+        let signature_projective = keypair.sign(test_message);
+
+        let pubkey_projective = keypair.public;
+        let pubkey_affine: Pubkey = pubkey_projective.into();
+        let pubkey_compressed: PubkeyCompressed = pubkey_affine.try_into().unwrap();
+
+        let signature_affine: Signature = signature_projective.into();
+        let signature_compressed: SignatureCompressed = signature_affine.try_into().unwrap();
+
+        assert!(pubkey_projective
+            .verify_signature(&signature_projective, test_message)
+            .unwrap());
+        assert!(pubkey_affine
+            .verify_signature(&signature_projective, test_message)
+            .unwrap());
+        assert!(pubkey_compressed
+            .verify_signature(&signature_projective, test_message)
+            .unwrap());
+
+        assert!(pubkey_projective
+            .verify_signature(&signature_affine, test_message)
+            .unwrap());
+        assert!(pubkey_affine
+            .verify_signature(&signature_affine, test_message)
+            .unwrap());
+        assert!(pubkey_compressed
+            .verify_signature(&signature_affine, test_message)
+            .unwrap());
+
+        assert!(pubkey_projective
+            .verify_signature(&signature_compressed, test_message)
+            .unwrap());
+        assert!(pubkey_affine
+            .verify_signature(&signature_compressed, test_message)
+            .unwrap());
+        assert!(pubkey_compressed
+            .verify_signature(&signature_compressed, test_message)
+            .unwrap());
+    }
+
+    #[test]
+    fn test_pubkey_verify_proof_of_possession() {
+        let keypair = Keypair::new();
+        let proof_projective = keypair.proof_of_possession();
+
+        let pubkey_projective = keypair.public;
+        let pubkey_affine: Pubkey = pubkey_projective.into();
+        let pubkey_compressed: PubkeyCompressed = pubkey_affine.try_into().unwrap();
+
+        let proof_affine: ProofOfPossession = proof_projective.into();
+        let proof_compressed: ProofOfPossessionCompressed = proof_affine.try_into().unwrap();
+
+        assert!(pubkey_projective
+            .verify_proof_of_possession(&proof_projective)
+            .unwrap());
+        assert!(pubkey_affine
+            .verify_proof_of_possession(&proof_projective)
+            .unwrap());
+        assert!(pubkey_compressed
+            .verify_proof_of_possession(&proof_projective)
+            .unwrap());
+
+        assert!(pubkey_projective
+            .verify_proof_of_possession(&proof_affine)
+            .unwrap());
+        assert!(pubkey_affine
+            .verify_proof_of_possession(&proof_affine)
+            .unwrap());
+        assert!(pubkey_compressed
+            .verify_proof_of_possession(&proof_affine)
+            .unwrap());
+
+        assert!(pubkey_projective
+            .verify_proof_of_possession(&proof_compressed)
+            .unwrap());
+        assert!(pubkey_affine
+            .verify_proof_of_possession(&proof_compressed)
+            .unwrap());
+        assert!(pubkey_compressed
+            .verify_proof_of_possession(&proof_compressed)
+            .unwrap());
     }
 
     #[test]
