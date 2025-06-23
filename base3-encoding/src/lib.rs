@@ -95,7 +95,7 @@ pub fn encode(
         .ok_or(EncodeError::ArithmeticOverflow)?;
     let mut result = Vec::with_capacity(capacity);
 
-    result.extend_from_slice(&(bit_vec_base.len() as u16).to_be_bytes());
+    result.extend_from_slice(&(bit_vec_base.len() as u16).to_le_bytes());
 
     // Process the bits of `bit_vec_base` and `bit_vec_fallback` in chunks of 80 bits
     for (base_chunk, fallback_chunk) in bit_vec_base.chunks(80).zip(bit_vec_fallback.chunks(80)) {
@@ -116,7 +116,7 @@ pub fn encode(
                 .ok_or(EncodeError::ArithmeticOverflow)?;
         }
 
-        result.extend_from_slice(&block_num.to_be_bytes());
+        result.extend_from_slice(&block_num.to_le_bytes());
     }
 
     Ok(result)
@@ -160,7 +160,7 @@ pub fn decode(bytes: &[u8]) -> Result<(BitVec<u8, Lsb0>, BitVec<u8, Lsb0>), Deco
     }
     let mut len_arr = [0u8; 2];
     len_arr.copy_from_slice(&bytes[..2]);
-    let total_bits = u16::from_be_bytes(len_arr) as usize;
+    let total_bits = u16::from_le_bytes(len_arr) as usize;
 
     let data_bytes = &bytes[2..];
     if data_bytes
@@ -183,7 +183,7 @@ pub fn decode(bytes: &[u8]) -> Result<(BitVec<u8, Lsb0>, BitVec<u8, Lsb0>), Deco
 
         let mut block_arr = [0u8; ENCODED_BYTES_PER_CHUNK];
         block_arr.copy_from_slice(block_bytes);
-        let mut block_num = u128::from_be_bytes(block_arr);
+        let mut block_num = u128::from_le_bytes(block_arr);
 
         let bits_in_this_chunk = bits_remaining.min(BASE3_SYMBOL_PER_CHUNK);
         let mut decoded_chunk_rev = Vec::with_capacity(bits_in_this_chunk);
