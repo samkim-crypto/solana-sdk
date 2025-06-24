@@ -88,8 +88,13 @@ pub fn encode_from_bytes(
 
     for chunk_index in 0..total_u8_length {
         let mut block_num: u8 = 0;
-        let start_bit = chunk_index * BASE3_SYMBOL_PER_CHUNK;
-        let end_bit = (start_bit + BASE3_SYMBOL_PER_CHUNK).min(num_bits);
+        let start_bit = chunk_index
+            .checked_mul(BASE3_SYMBOL_PER_CHUNK)
+            .ok_or(EncodeError::ArithmeticOverflow)?;
+        let end_bit = start_bit
+            .checked_add(BASE3_SYMBOL_PER_CHUNK)
+            .ok_or(EncodeError::ArithmeticOverflow)?
+            .min(num_bits);
 
         for i in (start_bit..end_bit).rev() {
             let byte_idx = i / 8;
@@ -128,6 +133,9 @@ pub enum DecodeError {
 }
 
 /// Decodes an encoded byte slice back into two byte vectors.
+///
+/// This function returns a tuple containing the base byte vector, the fallback
+/// byte vector, and the exact number of valid bits in those vectors.
 pub fn decode_to_bytes(
     bytes: &[u8],
     max_len: usize,
@@ -175,7 +183,11 @@ pub fn decode_to_bytes(
             let remainder = block_num % 3;
             block_num /= 3;
 
-            let bit_index = i * BASE3_SYMBOL_PER_CHUNK + j;
+            let bit_index = i
+                .checked_mul(BASE3_SYMBOL_PER_CHUNK)
+                .ok_or(DecodeError::ArithmeticOverflow)?
+                .checked_add(j)
+                .ok_or(DecodeError::ArithmeticOverflow)?;
             let byte_idx = bit_index / 8;
             let bit_idx = bit_index % 8;
 
@@ -193,7 +205,9 @@ pub fn decode_to_bytes(
                 fallback_bytes[byte_idx] |= 1 << bit_idx;
             }
         }
-        bits_remaining -= bits_in_this_chunk;
+        bits_remaining = bits_remaining
+            .checked_sub(bits_in_this_chunk)
+            .ok_or(DecodeError::ArithmeticOverflow)?;
     }
 
     Ok((base_bytes, fallback_bytes, total_bits))
@@ -247,8 +261,8 @@ mod tests {
     #[test]
     fn test_bytes_round_trip_small() {
         let num_bits = 10;
-        let base_bytes = vec![0b0100_1001, 0b0000_0001]; // Corresponds to bits [1,0,0,1,0,0,1,0,1,0]
-        let fallback_bytes = vec![0b1010_0110, 0b0000_0000]; // Corresponds to bits [0,1,1,0,0,1,0,1,0,0]
+        let base_bytes = vec![0b0100_1001, 0b0000_0001];
+        let fallback_bytes = vec![0b1010_0110, 0b0000_0000];
 
         let encoded = encode_from_bytes(&base_bytes, &fallback_bytes, num_bits).unwrap();
         let (decoded_base, decoded_fallback, decoded_bits) =
@@ -256,11 +270,12 @@ mod tests {
 
         assert_eq!(decoded_bits, num_bits);
         assert_eq!(base_bytes, decoded_base);
-        assert_eq!(fallback_bytes, decoded_fallback); // Compare relevant part
+        assert_eq!(fallback_bytes, decoded_fallback);
     }
 
     #[cfg(feature = "bitvec")]
     mod bitvec_tests {
+        use super::super::bitvec_support::*;
         use super::*;
         use bitvec::prelude::*;
 
