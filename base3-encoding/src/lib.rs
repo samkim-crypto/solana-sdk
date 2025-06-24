@@ -59,7 +59,8 @@ const ENCODED_BYTES_PER_CHUNK: usize = 1; // std::mem::size_of::<u8>()
 ///     output buffer.
 /// 3.  Iterates through the input vectors in chunks of 5 bits.
 /// 4.  For each chunk, it converts the 5 bit-pairs into 5 ternary digits and
-///     constructs a `u8` number from them.
+///     constructs a `u8` number from them. The first bit-pair becomes the least
+///     significant ternary digit.
 /// 5.  This `u8` number is appended to the output buffer as a single byte.
 ///
 /// # Errors
@@ -104,8 +105,9 @@ pub fn encode(
     {
         let mut block_num: u8 = 0; // base10 number assigned for each chunk block
 
-        // Iterate over corresponding bits in the chunk
-        for (base_bit, fallback_bit) in base_chunk.iter().zip(fallback_chunk.iter()) {
+        // Iterate over corresponding bits in the chunk in reverse to make the first
+        // bit-pair the least significant digit
+        for (base_bit, fallback_bit) in base_chunk.iter().zip(fallback_chunk.iter()).rev() {
             let chunk_num = match (*base_bit, *fallback_bit) {
                 (false, false) => 0u8,
                 (true, false) => 1u8,
@@ -130,8 +132,7 @@ pub fn encode(
 pub enum DecodeError {
     /// The byte slice is too short to contain a valid 2-byte length prefix.
     InvalidLengthPrefix,
-    /// The data payload is not a multiple of the 16-byte block size, indicating
-    /// potential corruption.
+    /// The data payload does not have the expected length.
     CorruptDataPayload,
 }
 
@@ -210,7 +211,6 @@ pub fn decode(
         let mut block_num = u8::from_le_bytes(block_arr);
 
         let bits_in_this_chunk = bits_remaining.min(BASE3_SYMBOL_PER_CHUNK);
-        let mut decoded_chunk_rev = Vec::with_capacity(bits_in_this_chunk);
 
         for _ in 0..bits_in_this_chunk {
             let remainder = block_num.checked_rem(3).unwrap();
@@ -222,12 +222,6 @@ pub fn decode(
                 2 => (false, true),
                 _ => unreachable!(),
             };
-            decoded_chunk_rev.push((base_bit, fallback_bit));
-        }
-
-        decoded_chunk_rev.reverse();
-
-        for (base_bit, fallback_bit) in decoded_chunk_rev {
             bit_vec_base.push(base_bit);
             bit_vec_fallback.push(fallback_bit);
         }
