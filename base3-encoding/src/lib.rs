@@ -23,10 +23,10 @@
 //! # Encoded Format
 //!
 //! The resulting `Vec<u8>` has a simple structure:
-//! 1.  **Length Prefix (2 bytes)**: A `u16` in big-endian format storing the original
-//!     number of bits (i.e., the length of the input vectors).
+//! 1.  **Length Prefix (2 bytes)**: A `u16` in little-endian format storing the
+//!     original number of bits (i.e., the length of the input vectors).
 //! 2.  **Data Payload (N * 16 bytes)**: A sequence of 16-byte chunks, where each
-//!     chunk is the big-endian representation of a `u128` value containing the
+//!     chunk is the little-endian representation of a `u128` value containing the
 //!     encoded data.
 
 use bitvec::prelude::*;
@@ -55,12 +55,13 @@ const ENCODED_BYTES_PER_CHUNK: usize = 16; // std::mem::size_of::<u128>()
 /// # Algorithm
 /// 1.  Validates that the input vectors have the same length and do not exceed
 ///     `u16::MAX`.
-/// 2.  Writes the length of the vectors as a 2-byte big-endian `u16` to the
+/// 2.  Writes the length of the vectors as a 2-byte little-endian `u16` to the
 ///     output buffer.
 /// 3.  Iterates through the input vectors in chunks of 80 bits.
 /// 4.  For each chunk, it converts the 80 bit-pairs into 80 ternary digits and
 ///     constructs a `u128` number from them.
-/// 5.  This `u128` number is appended to the output buffer as 16 big-endian bytes.
+/// 5.  This `u128` number is appended to the output buffer as 16 little-endian
+///     bytes.
 ///
 /// # Errors
 /// Returns an `EncodeError` if:
