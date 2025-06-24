@@ -285,7 +285,7 @@ mod tests {
 
     #[test]
     fn test_round_trip_exact_chunk() {
-        let (base, fallback) = create_test_data(BASE3_SYMBOL_PER_CHUNK); // 80
+        let (base, fallback) = create_test_data(BASE3_SYMBOL_PER_CHUNK); // 5
         let encoded = encode(&base, &fallback).unwrap();
         let (decoded_base, decoded_fallback) = decode(&encoded, BASE3_SYMBOL_PER_CHUNK).unwrap();
         assert_eq!(base, decoded_base);
@@ -294,18 +294,18 @@ mod tests {
 
     #[test]
     fn test_round_trip_multi_chunk_partial() {
-        let (base, fallback) = create_test_data(95); // 1 full chunk, 1 partial
+        let (base, fallback) = create_test_data(7); // 1 full chunk, 1 partial
         let encoded = encode(&base, &fallback).unwrap();
-        let (decoded_base, decoded_fallback) = decode(&encoded, 95).unwrap();
+        let (decoded_base, decoded_fallback) = decode(&encoded, 7).unwrap();
         assert_eq!(base, decoded_base);
         assert_eq!(fallback, decoded_fallback);
     }
 
     #[test]
     fn test_round_trip_multi_chunk_exact() {
-        let (base, fallback) = create_test_data(160); // 2 full chunks
+        let (base, fallback) = create_test_data(10); // 2 full chunks
         let encoded = encode(&base, &fallback).unwrap();
-        let (decoded_base, decoded_fallback) = decode(&encoded, 160).unwrap();
+        let (decoded_base, decoded_fallback) = decode(&encoded, 10).unwrap();
         assert_eq!(base, decoded_base);
         assert_eq!(fallback, decoded_fallback);
     }
