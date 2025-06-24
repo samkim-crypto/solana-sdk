@@ -9,10 +9,12 @@ homepage = { workspace = true }
 license = { workspace = true }
 edition = { workspace = true }
 
-[features]
-
 [dependencies]
-bitvec = { workspace = true }
+bitvec = { version = "1.0.1", optional = true }
+
+[features]
+default = []
+bitvec = ["dep:bitvec"]
 
 [dev-dependencies]
 
