@@ -99,7 +99,10 @@ pub fn encode(
     result.extend_from_slice(&(bit_vec_base.len() as u16).to_le_bytes());
 
     // Process the bits of `bit_vec_base` and `bit_vec_fallback` in chunks of 80 bits
-    for (base_chunk, fallback_chunk) in bit_vec_base.chunks(80).zip(bit_vec_fallback.chunks(80)) {
+    for (base_chunk, fallback_chunk) in bit_vec_base
+        .chunks(BASE3_SYMBOL_PER_CHUNK)
+        .zip(bit_vec_fallback.chunks(BASE3_SYMBOL_PER_CHUNK))
+    {
         let mut block_num: u128 = 0; // base10 number assigned for each chunk block
 
         // Iterate over corresponding bits in the chunk
