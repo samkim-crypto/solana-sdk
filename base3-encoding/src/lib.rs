@@ -17,17 +17,16 @@
 //! The combination `(true, true)` is considered invalid and will result in an error
 //! during encoding.
 //!
-//! These ternary digits are then packed into 128-bit integers (`u128`) for compact
-//! storage. Since `3^80 < 2^128`, each `u128` can hold 80 ternary digits.
+//! These ternary digits are then packed into 8-bit integers (`u8`) for compact
+//! storage. Since `3^5 < 2^8`, each `u8` can hold 5 ternary digits.
 //!
 //! # Encoded Format
 //!
 //! The resulting `Vec<u8>` has a simple structure:
 //! 1.  **Length Prefix (2 bytes)**: A `u16` in little-endian format storing the
 //!     original number of bits (i.e., the length of the input vectors).
-//! 2.  **Data Payload (N * 16 bytes)**: A sequence of 16-byte chunks, where each
-//!     chunk is the little-endian representation of a `u128` value containing the
-//!     encoded data.
+//! 2.  **Data Payload (N * 1 byte)**: A sequence of single bytes, where each
+//!     byte is a `u8` value containing 5 encoded ternary digits.
 
 use bitvec::prelude::*;
 
@@ -44,8 +43,9 @@ pub enum EncodeError {
     ArithmeticOverflow,
 }
 
-const BASE3_SYMBOL_PER_CHUNK: usize = 80;
-const ENCODED_BYTES_PER_CHUNK: usize = 16; // std::mem::size_of::<u128>()
+// Each u8 chunk can hold 5 base-3 symbols (3^5 = 243 <= 255).
+const BASE3_SYMBOL_PER_CHUNK: usize = 5;
+const ENCODED_BYTES_PER_CHUNK: usize = 1; // std::mem::size_of::<u8>()
 
 /// Encodes two `BitVec`s into a single `Vec<u8>`.
 ///
@@ -57,11 +57,10 @@ const ENCODED_BYTES_PER_CHUNK: usize = 16; // std::mem::size_of::<u128>()
 ///     `u16::MAX`.
 /// 2.  Writes the length of the vectors as a 2-byte little-endian `u16` to the
 ///     output buffer.
-/// 3.  Iterates through the input vectors in chunks of 80 bits.
-/// 4.  For each chunk, it converts the 80 bit-pairs into 80 ternary digits and
-///     constructs a `u128` number from them.
-/// 5.  This `u128` number is appended to the output buffer as 16 little-endian
-///     bytes.
+/// 3.  Iterates through the input vectors in chunks of 5 bits.
+/// 4.  For each chunk, it converts the 5 bit-pairs into 5 ternary digits and
+///     constructs a `u8` number from them.
+/// 5.  This `u8` number is appended to the output buffer as a single byte.
 ///
 /// # Errors
 /// Returns an `EncodeError` if:
@@ -81,13 +80,13 @@ pub fn encode(
         return Err(EncodeError::LengthExceedsLimit);
     }
 
-    let total_u128_length = bit_vec_len
+    let total_u8_length = bit_vec_len
         .checked_add(BASE3_SYMBOL_PER_CHUNK - 1)
         .ok_or(EncodeError::ArithmeticOverflow)?
         .checked_div(BASE3_SYMBOL_PER_CHUNK)
-        .ok_or(EncodeError::ArithmeticOverflow)?; // computes `ceil(bit_vec_len / 80)`
+        .ok_or(EncodeError::ArithmeticOverflow)?;
 
-    let total_byte_length = total_u128_length
+    let total_byte_length = total_u8_length
         .checked_mul(ENCODED_BYTES_PER_CHUNK)
         .ok_or(EncodeError::ArithmeticOverflow)?;
 
@@ -98,19 +97,19 @@ pub fn encode(
 
     result.extend_from_slice(&(bit_vec_base.len() as u16).to_le_bytes());
 
-    // Process the bits of `bit_vec_base` and `bit_vec_fallback` in chunks of 80 bits
+    // Process the bits of `bit_vec_base` and `bit_vec_fallback` in chunks of 5 bits
     for (base_chunk, fallback_chunk) in bit_vec_base
         .chunks(BASE3_SYMBOL_PER_CHUNK)
         .zip(bit_vec_fallback.chunks(BASE3_SYMBOL_PER_CHUNK))
     {
-        let mut block_num: u128 = 0; // base10 number assigned for each chunk block
+        let mut block_num: u8 = 0; // base10 number assigned for each chunk block
 
         // Iterate over corresponding bits in the chunk
         for (base_bit, fallback_bit) in base_chunk.iter().zip(fallback_chunk.iter()) {
             let chunk_num = match (*base_bit, *fallback_bit) {
-                (false, false) => 0u128,
-                (true, false) => 1u128,
-                (false, true) => 2u128,
+                (false, false) => 0u8,
+                (true, false) => 1u8,
+                (false, true) => 2u8,
                 (true, true) => return Err(EncodeError::InvalidBitCombination),
             };
             block_num = block_num
@@ -143,26 +142,26 @@ pub enum DecodeError {
 ///
 /// # Parameters
 /// - `bytes`: The byte slice containing the encoded data.
-/// - `max_len`: The maximum expected length of the decoded bit vectors.
+/// - `max_len`: The maximum expected length of the decoded bit vectors. This is a
+///   security parameter to prevent DoS attacks from maliciously large length headers.
 ///
 /// # Algorithm
 /// 1.  Reads the first 2 bytes to determine the `total_bits` of the original data.
-/// 2.  Validates that the remaining data payload is a multiple of 16 bytes.
-/// 3.  Iterates through the data payload in 16-byte chunks.
-/// 4.  For each chunk, it reconstructs the `u128` value.
-/// 5.  It uses modulo-3 arithmetic to decode the `u128` back into ternary digits.
+/// 2.  Validates that `total_bits` does not exceed `max_len`.
+/// 3.  Validates that the remaining data payload is a multiple of 1 byte.
+/// 4.  Iterates through the data payload in 1-byte chunks.
+/// 5.  For each chunk, it reconstructs the `u8` value.
+/// 6.  It uses modulo-3 arithmetic to decode the `u8` back into ternary digits.
 ///     The number of digits to decode is determined by the number of bits
 ///     remaining to be decoded, which correctly handles the final, partial chunk.
-/// 6.  Each ternary digit is mapped back to its original `(base_bit, fallback_bit)`
+/// 7.  Each ternary digit is mapped back to its original `(base_bit, fallback_bit)`
 ///     pair and pushed to the respective output vectors.
 ///
 /// # Errors
 /// Returns a `DecodeError` if:
-/// - The input byte slice is less than 2 bytes long (`InvalidLengthPrefix`).
-/// - The decoded length from the header exceeds the maximum length provided by
-///   the caller (`CorruptDataPayload`).
-/// - The data payload (after the length prefix) is not a multiple of 16
-///   (`CorruptDataPayload`).
+/// - The input byte slice is too short to contain a valid 2-byte length prefix (`InvalidLengthPrefix`).
+/// - The decoded length from the header exceeds the `max_len` parameter (`CorruptDataPayload`).
+/// - The data payload (after the length prefix) is not a multiple of the expected chunk size (`CorruptDataPayload`).
 #[allow(clippy::type_complexity)]
 pub fn decode(
     bytes: &[u8],
@@ -181,12 +180,19 @@ pub fn decode(
     }
 
     let data_bytes = &bytes[2..];
-    if data_bytes
-        .len()
-        .checked_rem(ENCODED_BYTES_PER_CHUNK)
-        .unwrap()
-        != 0
-    {
+
+    // Calculate the expected number of chunks and the expected payload length
+    let expected_num_chunks = total_bits
+        .checked_add(BASE3_SYMBOL_PER_CHUNK - 1)
+        .and_then(|n| n.checked_div(BASE3_SYMBOL_PER_CHUNK))
+        .ok_or(DecodeError::CorruptDataPayload)?; // Should not overflow due to max_len check
+
+    let expected_payload_len = expected_num_chunks
+        .checked_mul(ENCODED_BYTES_PER_CHUNK)
+        .ok_or(DecodeError::CorruptDataPayload)?;
+
+    // Check if the actual payload length matches the expected length
+    if data_bytes.len() != expected_payload_len {
         return Err(DecodeError::CorruptDataPayload);
     }
 
@@ -201,14 +207,14 @@ pub fn decode(
 
         let mut block_arr = [0u8; ENCODED_BYTES_PER_CHUNK];
         block_arr.copy_from_slice(block_bytes);
-        let mut block_num = u128::from_le_bytes(block_arr);
+        let mut block_num = u8::from_le_bytes(block_arr);
 
         let bits_in_this_chunk = bits_remaining.min(BASE3_SYMBOL_PER_CHUNK);
         let mut decoded_chunk_rev = Vec::with_capacity(bits_in_this_chunk);
 
         for _ in 0..bits_in_this_chunk {
-            let remainder = block_num.checked_rem(3).unwrap() as u8;
-            block_num = block_num.checked_div(3).unwrap(); // div by 3 will never panic
+            let remainder = block_num.checked_rem(3).unwrap();
+            block_num = block_num.checked_div(3).unwrap();
 
             let (base_bit, fallback_bit) = match remainder {
                 0 => (false, false),
@@ -235,7 +241,6 @@ pub fn decode(
     Ok((bit_vec_base, bit_vec_fallback))
 }
 
-// The tests module remains the same as you provided.
 #[cfg(test)]
 mod tests {
     use super::*;
