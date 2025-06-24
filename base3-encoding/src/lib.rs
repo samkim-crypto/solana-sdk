@@ -141,6 +141,10 @@ pub enum DecodeError {
 /// This function reverses the process of the `encode` function, reconstructing
 /// the original two bit vectors from a byte slice.
 ///
+/// # Parameters
+/// - `bytes`: The byte slice containing the encoded data.
+/// - `max_len`: The maximum expected length of the decoded bit vectors.
+///
 /// # Algorithm
 /// 1.  Reads the first 2 bytes to determine the `total_bits` of the original data.
 /// 2.  Validates that the remaining data payload is a multiple of 16 bytes.
@@ -155,16 +159,26 @@ pub enum DecodeError {
 /// # Errors
 /// Returns a `DecodeError` if:
 /// - The input byte slice is less than 2 bytes long (`InvalidLengthPrefix`).
+/// - The decoded length from the header exceeds the maximum length provided by
+///   the caller (`CorruptDataPayload`).
 /// - The data payload (after the length prefix) is not a multiple of 16
 ///   (`CorruptDataPayload`).
 #[allow(clippy::type_complexity)]
-pub fn decode(bytes: &[u8]) -> Result<(BitVec<u8, Lsb0>, BitVec<u8, Lsb0>), DecodeError> {
+pub fn decode(
+    bytes: &[u8],
+    max_len: usize,
+) -> Result<(BitVec<u8, Lsb0>, BitVec<u8, Lsb0>), DecodeError> {
     if bytes.len() < 2 {
         return Err(DecodeError::InvalidLengthPrefix);
     }
     let mut len_arr = [0u8; 2];
     len_arr.copy_from_slice(&bytes[..2]);
     let total_bits = u16::from_le_bytes(len_arr) as usize;
+
+    // if the total bits exceeds the maximum allowed length, return with error early
+    if total_bits > max_len {
+        return Err(DecodeError::CorruptDataPayload);
+    }
 
     let data_bytes = &bytes[2..];
     if data_bytes
@@ -256,7 +270,7 @@ mod tests {
         let (base, fallback) = create_test_data(0);
         let encoded = encode(&base, &fallback).unwrap();
         assert_eq!(encoded, vec![0, 0]);
-        let (decoded_base, decoded_fallback) = decode(&encoded).unwrap();
+        let (decoded_base, decoded_fallback) = decode(&encoded, 0).unwrap();
         assert_eq!(base, decoded_base);
         assert_eq!(fallback, decoded_fallback);
     }
@@ -265,7 +279,7 @@ mod tests {
     fn test_round_trip_small() {
         let (base, fallback) = create_test_data(10);
         let encoded = encode(&base, &fallback).unwrap();
-        let (decoded_base, decoded_fallback) = decode(&encoded).unwrap();
+        let (decoded_base, decoded_fallback) = decode(&encoded, 10).unwrap();
         assert_eq!(base, decoded_base);
         assert_eq!(fallback, decoded_fallback);
     }
@@ -274,7 +288,7 @@ mod tests {
     fn test_round_trip_exact_chunk() {
         let (base, fallback) = create_test_data(BASE3_SYMBOL_PER_CHUNK); // 80
         let encoded = encode(&base, &fallback).unwrap();
-        let (decoded_base, decoded_fallback) = decode(&encoded).unwrap();
+        let (decoded_base, decoded_fallback) = decode(&encoded, BASE3_SYMBOL_PER_CHUNK).unwrap();
         assert_eq!(base, decoded_base);
         assert_eq!(fallback, decoded_fallback);
     }
@@ -283,7 +297,7 @@ mod tests {
     fn test_round_trip_multi_chunk_partial() {
         let (base, fallback) = create_test_data(95); // 1 full chunk, 1 partial
         let encoded = encode(&base, &fallback).unwrap();
-        let (decoded_base, decoded_fallback) = decode(&encoded).unwrap();
+        let (decoded_base, decoded_fallback) = decode(&encoded, 95).unwrap();
         assert_eq!(base, decoded_base);
         assert_eq!(fallback, decoded_fallback);
     }
@@ -292,7 +306,7 @@ mod tests {
     fn test_round_trip_multi_chunk_exact() {
         let (base, fallback) = create_test_data(160); // 2 full chunks
         let encoded = encode(&base, &fallback).unwrap();
-        let (decoded_base, decoded_fallback) = decode(&encoded).unwrap();
+        let (decoded_base, decoded_fallback) = decode(&encoded, 160).unwrap();
         assert_eq!(base, decoded_base);
         assert_eq!(fallback, decoded_fallback);
     }
@@ -322,7 +336,7 @@ mod tests {
     #[test]
     fn test_decode_error_invalid_length_prefix() {
         let bytes = vec![1];
-        let result = decode(&bytes);
+        let result = decode(&bytes, 0);
         assert_eq!(result, Err(DecodeError::InvalidLengthPrefix));
     }
 
@@ -331,7 +345,16 @@ mod tests {
         let (base, fallback) = create_test_data(10);
         let mut encoded = encode(&base, &fallback).unwrap();
         encoded.pop(); // Make the payload an invalid length
-        let result = decode(&encoded);
+        let result = decode(&encoded, 10);
+        assert_eq!(result, Err(DecodeError::CorruptDataPayload));
+    }
+
+    #[test]
+    fn test_decode_error_length_exceeds_max() {
+        let len = 10;
+        let (base, fallback) = create_test_data(len);
+        let encoded = encode(&base, &fallback).unwrap();
+        let result = decode(&encoded, len - 1); // Set max_len to be less than actual length
         assert_eq!(result, Err(DecodeError::CorruptDataPayload));
     }
 }
