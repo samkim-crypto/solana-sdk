@@ -218,8 +218,7 @@ pub use bitvec_support::*;
 
 #[cfg(feature = "bitvec")]
 mod bitvec_support {
-    use super::*;
-    use bitvec::prelude::*;
+    use {super::*, bitvec::prelude::*};
 
     /// A wrapper to encode two `BitVec`s into a single `Vec<u8>`.
     pub fn encode(
@@ -275,9 +274,10 @@ mod tests {
 
     #[cfg(feature = "bitvec")]
     mod bitvec_tests {
-        use super::super::bitvec_support::*;
-        use super::*;
-        use bitvec::prelude::*;
+        use {
+            super::{super::bitvec_support::*, *},
+            bitvec::prelude::*,
+        };
 
         fn create_test_data(len: usize) -> (BitVec<u8, Lsb0>, BitVec<u8, Lsb0>) {
             let mut base = BitVec::with_capacity(len);
