@@ -82,7 +82,7 @@ pub fn encode_from_bytes(
         .ok_or(EncodeError::ArithmeticOverflow)?;
 
     let capacity = total_byte_length
-        .checked_add(2)
+        .checked_add(2) // we use 2 bytes to hold the bit lengths
         .ok_or(EncodeError::ArithmeticOverflow)?;
     let mut result = Vec::with_capacity(capacity);
 
