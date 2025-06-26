@@ -65,6 +65,8 @@ pub fn encode_from_bytes(
         .checked_div(8)
         .ok_or(EncodeError::ArithmeticOverflow)?;
 
+    // If `base_bytes.len()` or `fallback_bytes.len()` is greater than `required_bytes`,
+    // the extra bytes will simply be ignored.
     if base_bytes.len() < required_bytes || fallback_bytes.len() < required_bytes {
         return Err(EncodeError::MismatchedLengths);
     }
