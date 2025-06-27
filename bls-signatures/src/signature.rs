@@ -2,11 +2,9 @@
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 #[cfg(not(target_os = "solana"))]
 use {
-    crate::{
-        error::BlsError,
-        pubkey::{AsPubkeyProjective, PubkeyProjective, VerifiablePubkey},
-    },
+    crate::{error::BlsError, pubkey::PubkeyProjective},
     blstrs::{G2Affine, G2Projective},
+    core::convert::Infallible,
     group::Group,
 };
 use {
@@ -45,6 +43,16 @@ impl Default for SignatureProjective {
 
 #[cfg(not(target_os = "solana"))]
 impl SignatureProjective {
+    /// Verify the signature against any convertible public key type and a message
+    pub fn verify<P>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError>
+    where
+        for<'a> &'a P: TryInto<PubkeyProjective>,
+        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
+    {
+        let pubkey_projective: PubkeyProjective = pubkey.try_into().map_err(Into::into)?;
+        Ok(pubkey_projective._verify_signature(self, message))
+    }
+
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     pub fn aggregate_with<'a, I>(&mut self, signatures: I)
@@ -88,34 +96,15 @@ impl SignatureProjective {
         let aggregate_pubkey = PubkeyProjective::aggregate(public_keys)?;
         let aggregate_signature = SignatureProjective::aggregate(signatures)?;
 
-        aggregate_pubkey.verify_signature(&aggregate_signature, message)
+        Ok(aggregate_pubkey._verify_signature(&aggregate_signature, message))
     }
 }
 
 #[cfg(not(target_os = "solana"))]
-pub trait VerifiableSignature: AsSignatureProjective {
-    /// Verify the signature against any convertible public key type and a message
-    fn verify<P: AsPubkeyProjective>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError> {
-        let signature_projective = self.try_as_projective()?;
-        let pubkey_projective = pubkey.try_as_projective()?;
-        pubkey_projective.verify_signature(&signature_projective, message)
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl<T: AsSignatureProjective> VerifiableSignature for T {}
-
-/// A trait for types that can be converted into a `SignatureProjective` for verification
-#[cfg(not(target_os = "solana"))]
-pub trait AsSignatureProjective {
-    /// Attempt to convert the type into a `SignatureProjective`
-    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError>;
-}
-
-#[cfg(not(target_os = "solana"))]
-impl AsSignatureProjective for SignatureProjective {
-    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
-        Ok(*self)
+impl<'a> TryFrom<&'a SignatureProjective> for SignatureProjective {
+    type Error = Infallible;
+    fn try_from(signature: &'a SignatureProjective) -> Result<Self, Self::Error> {
+        Ok(*signature)
     }
 }
 
@@ -155,13 +144,6 @@ impl TryFrom<&Signature> for SignatureProjective {
     }
 }
 
-#[cfg(not(target_os = "solana"))]
-impl AsSignatureProjective for Signature {
-    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
-        SignatureProjective::try_from(self)
-    }
-}
-
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -172,6 +154,19 @@ pub struct SignatureCompressed(
     #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_COMPRESSED_SIZE]"))]
     pub  [u8; BLS_SIGNATURE_COMPRESSED_SIZE],
 );
+
+#[cfg(not(target_os = "solana"))]
+impl SignatureCompressed {
+    /// Verify the signature against any convertible public key type and a message
+    pub fn verify<P>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError>
+    where
+        for<'a> &'a P: TryInto<PubkeyProjective>,
+        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
+    {
+        let signature_projective: SignatureProjective = self.try_into()?;
+        signature_projective.verify(pubkey, message)
+    }
+}
 
 impl Default for SignatureCompressed {
     fn default() -> Self {
@@ -191,6 +186,26 @@ impl_from_str!(
     BASE64_LEN = BLS_SIGNATURE_COMPRESSED_BASE64_SIZE
 );
 
+#[cfg(not(target_os = "solana"))]
+impl TryFrom<SignatureCompressed> for SignatureProjective {
+    type Error = BlsError;
+
+    fn try_from(signature: SignatureCompressed) -> Result<Self, Self::Error> {
+        (&signature).try_into()
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl TryFrom<&SignatureCompressed> for SignatureProjective {
+    type Error = BlsError;
+
+    fn try_from(signature: &SignatureCompressed) -> Result<Self, Self::Error> {
+        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&signature.0).into();
+        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
+        Ok(SignatureProjective(uncompressed.into()))
+    }
+}
+
 /// A serialized BLS signature in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -201,6 +216,19 @@ pub struct Signature(
     #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_AFFINE_SIZE]"))]
     pub  [u8; BLS_SIGNATURE_AFFINE_SIZE],
 );
+
+#[cfg(not(target_os = "solana"))]
+impl Signature {
+    /// Verify the signature against any convertible public key type and a message
+    pub fn verify<P>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError>
+    where
+        for<'a> &'a P: TryInto<PubkeyProjective>,
+        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
+    {
+        let signature_projective: SignatureProjective = self.try_into()?;
+        signature_projective.verify(pubkey, message)
+    }
+}
 
 impl Default for Signature {
     fn default() -> Self {
@@ -257,15 +285,6 @@ impl TryFrom<&SignatureCompressed> for Signature {
         let maybe_compressed: Option<G2Affine> = G2Affine::from_compressed(&signature.0).into();
         let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(compressed.to_uncompressed()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl AsSignatureProjective for SignatureCompressed {
-    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&self.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(SignatureProjective(uncompressed.into()))
     }
 }
 

@@ -7,12 +7,10 @@ extern crate std;
 pub use crate::{
     error::BlsError,
     keypair::Keypair,
-    proof_of_possession::{
-        AsProofOfPossessionProjective, ProofOfPossessionProjective, VerifiableProofOfPossession,
-    },
-    pubkey::{AsPubkeyProjective, PubkeyProjective, VerifiablePubkey},
+    proof_of_possession::ProofOfPossessionProjective,
+    pubkey::PubkeyProjective,
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
-    signature::{AsSignatureProjective, SignatureProjective, VerifiableSignature},
+    signature::SignatureProjective,
 };
 pub use crate::{
     proof_of_possession::{

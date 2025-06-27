@@ -2,11 +2,9 @@
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 #[cfg(not(target_os = "solana"))]
 use {
-    crate::{
-        error::BlsError,
-        pubkey::{AsPubkeyProjective, VerifiablePubkey},
-    },
+    crate::{error::BlsError, pubkey::PubkeyProjective},
     blstrs::{G2Affine, G2Projective},
+    core::convert::Infallible,
 };
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
@@ -40,33 +38,16 @@ pub const BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE: usize = 256;
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub struct ProofOfPossessionProjective(pub(crate) G2Projective);
 
-/// A behavior trait that provides the `.verify()` method
 #[cfg(not(target_os = "solana"))]
-pub trait VerifiableProofOfPossession: AsProofOfPossessionProjective {
-    /// Verifies the proof against any convertible public key type.
-    ///
-    /// The logic is defined here once and is inherited by all implementors
-    fn verify<P: AsPubkeyProjective>(&self, pubkey: &P) -> Result<bool, BlsError> {
-        let proof_projective = self.try_as_projective()?;
-        let pubkey_projective = pubkey.try_as_projective()?;
-        pubkey_projective.verify_proof_of_possession(&proof_projective)
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl<T: AsProofOfPossessionProjective> VerifiableProofOfPossession for T {}
-
-/// A trait for types that can be converted into a `ProofOfPossessionProjective` for verification
-#[cfg(not(target_os = "solana"))]
-pub trait AsProofOfPossessionProjective {
-    /// Attempt to convert the type into a `ProofOfPossessionProjective`
-    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError>;
-}
-
-#[cfg(not(target_os = "solana"))]
-impl AsProofOfPossessionProjective for ProofOfPossessionProjective {
-    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
-        Ok(*self)
+impl ProofOfPossessionProjective {
+    /// Verify the proof of possession against any convertible public key type
+    pub fn verify<P>(&self, pubkey: &P) -> Result<bool, BlsError>
+    where
+        for<'a> &'a P: TryInto<PubkeyProjective>,
+        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
+    {
+        let pubkey_projective: PubkeyProjective = pubkey.try_into().map_err(Into::into)?;
+        Ok(pubkey_projective._verify_proof_of_possession(self))
     }
 }
 
@@ -104,13 +85,6 @@ impl TryFrom<&ProofOfPossession> for ProofOfPossessionProjective {
     }
 }
 
-#[cfg(not(target_os = "solana"))]
-impl AsProofOfPossessionProjective for ProofOfPossession {
-    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
-        ProofOfPossessionProjective::try_from(self)
-    }
-}
-
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -124,6 +98,19 @@ pub struct ProofOfPossessionCompressed(
     )]
     pub [u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
 );
+
+#[cfg(not(target_os = "solana"))]
+impl ProofOfPossessionCompressed {
+    /// Verify the proof of possession against any convertible public key type
+    pub fn verify<P>(&self, pubkey: &P) -> Result<bool, BlsError>
+    where
+        for<'a> &'a P: TryInto<PubkeyProjective>,
+        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
+    {
+        let proof_projective: ProofOfPossessionProjective = self.try_into()?;
+        proof_projective.verify(pubkey)
+    }
+}
 
 impl Default for ProofOfPossessionCompressed {
     fn default() -> Self {
@@ -156,6 +143,27 @@ pub struct ProofOfPossession(
     )]
     pub [u8; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE],
 );
+
+#[cfg(not(target_os = "solana"))]
+impl ProofOfPossession {
+    /// Verify the proof of possession against any convertible public key type
+    pub fn verify<P>(&self, pubkey: &P) -> Result<bool, BlsError>
+    where
+        for<'a> &'a P: TryInto<PubkeyProjective>,
+        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
+    {
+        let proof_projective: ProofOfPossessionProjective = self.try_into()?;
+        proof_projective.verify(pubkey)
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl<'a> TryFrom<&'a ProofOfPossessionProjective> for ProofOfPossessionProjective {
+    type Error = Infallible;
+    fn try_from(proof: &'a ProofOfPossessionProjective) -> Result<Self, Self::Error> {
+        Ok(*proof)
+    }
+}
 
 impl Default for ProofOfPossession {
     fn default() -> Self {
@@ -216,9 +224,20 @@ impl TryFrom<&ProofOfPossessionCompressed> for ProofOfPossession {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl AsProofOfPossessionProjective for ProofOfPossessionCompressed {
-    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&self.0).into();
+impl TryFrom<ProofOfPossessionCompressed> for ProofOfPossessionProjective {
+    type Error = BlsError;
+
+    fn try_from(proof: ProofOfPossessionCompressed) -> Result<Self, Self::Error> {
+        (&proof).try_into()
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl TryFrom<&ProofOfPossessionCompressed> for ProofOfPossessionProjective {
+    type Error = BlsError;
+
+    fn try_from(proof: &ProofOfPossessionCompressed) -> Result<Self, Self::Error> {
+        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&proof.0).into();
         let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
         Ok(ProofOfPossessionProjective(uncompressed.into()))
     }
