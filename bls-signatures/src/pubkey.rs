@@ -146,38 +146,13 @@ impl AsPubkeyProjective for PubkeyProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl From<PubkeyProjective> for Pubkey {
-    fn from(pubkey: PubkeyProjective) -> Self {
-        (&pubkey).into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl From<&PubkeyProjective> for Pubkey {
-    fn from(pubkey: &PubkeyProjective) -> Self {
-        Self(pubkey.0.to_uncompressed())
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<Pubkey> for PubkeyProjective {
-    type Error = BlsError;
-
-    fn try_from(pubkey: Pubkey) -> Result<Self, Self::Error> {
-        (&pubkey).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&Pubkey> for PubkeyProjective {
-    type Error = BlsError;
-
-    fn try_from(pubkey: &Pubkey) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G1Affine> = G1Affine::from_uncompressed(&pubkey.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.into()))
-    }
-}
+impl_bls_conversions!(
+    PubkeyProjective,
+    Pubkey,
+    PubkeyCompressed,
+    G1Affine,
+    BlsError
+);
 
 #[cfg(not(target_os = "solana"))]
 impl AsPubkeyProjective for Pubkey {
@@ -268,66 +243,6 @@ impl_from_str!(
     BYTES_LEN = BLS_PUBLIC_KEY_AFFINE_SIZE,
     BASE64_LEN = BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE
 );
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<Pubkey> for PubkeyCompressed {
-    type Error = BlsError;
-
-    fn try_from(pubkey: Pubkey) -> Result<Self, Self::Error> {
-        (&pubkey).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&Pubkey> for PubkeyCompressed {
-    type Error = BlsError;
-
-    fn try_from(pubkey: &Pubkey) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G1Affine> = G1Affine::from_uncompressed(&pubkey.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.to_compressed()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<PubkeyCompressed> for Pubkey {
-    type Error = BlsError;
-
-    fn try_from(pubkey: PubkeyCompressed) -> Result<Self, Self::Error> {
-        (&pubkey).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&PubkeyCompressed> for Pubkey {
-    type Error = BlsError;
-
-    fn try_from(pubkey: &PubkeyCompressed) -> Result<Self, Self::Error> {
-        let maybe_compressed: Option<G1Affine> = G1Affine::from_compressed(&pubkey.0).into();
-        let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(compressed.to_uncompressed()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<PubkeyCompressed> for PubkeyProjective {
-    type Error = BlsError;
-
-    fn try_from(pubkey: PubkeyCompressed) -> Result<Self, Self::Error> {
-        (&pubkey).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&PubkeyCompressed> for PubkeyProjective {
-    type Error = BlsError;
-
-    fn try_from(pubkey: &PubkeyCompressed) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G1Affine> = G1Affine::from_compressed(&pubkey.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(PubkeyProjective(uncompressed.into()))
-    }
-}
 
 #[cfg(not(target_os = "solana"))]
 impl AsPubkeyProjective for PubkeyCompressed {

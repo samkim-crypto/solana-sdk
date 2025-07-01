@@ -121,40 +121,13 @@ impl AsSignatureProjective for SignatureProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl From<SignatureProjective> for Signature {
-    fn from(signature: SignatureProjective) -> Self {
-        (&signature).into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl From<&SignatureProjective> for Signature {
-    fn from(signature: &SignatureProjective) -> Self {
-        Self(signature.0.to_uncompressed())
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<Signature> for SignatureProjective {
-    type Error = BlsError;
-
-    fn try_from(signature: Signature) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&signature.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.into()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&Signature> for SignatureProjective {
-    type Error = BlsError;
-
-    fn try_from(signature: &Signature) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&signature.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.into()))
-    }
-}
+impl_bls_conversions!(
+    SignatureProjective,
+    Signature,
+    SignatureCompressed,
+    G2Affine,
+    BlsError
+);
 
 #[cfg(not(target_os = "solana"))]
 impl AsSignatureProjective for Signature {
@@ -193,26 +166,6 @@ impl_from_str!(
 );
 
 #[cfg(not(target_os = "solana"))]
-impl TryFrom<SignatureCompressed> for SignatureProjective {
-    type Error = BlsError;
-
-    fn try_from(signature: SignatureCompressed) -> Result<Self, Self::Error> {
-        (&signature).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&SignatureCompressed> for SignatureProjective {
-    type Error = BlsError;
-
-    fn try_from(signature: &SignatureCompressed) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&signature.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(SignatureProjective(uncompressed.into()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
 impl AsSignatureProjective for SignatureCompressed {
     fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
         SignatureProjective::try_from(self)
@@ -247,46 +200,6 @@ impl_from_str!(
     BYTES_LEN = BLS_SIGNATURE_AFFINE_SIZE,
     BASE64_LEN = BLS_SIGNATURE_AFFINE_BASE64_SIZE
 );
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<Signature> for SignatureCompressed {
-    type Error = BlsError;
-
-    fn try_from(signature: Signature) -> Result<Self, Self::Error> {
-        (&signature).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&Signature> for SignatureCompressed {
-    type Error = BlsError;
-
-    fn try_from(signature: &Signature) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&signature.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.to_compressed()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<SignatureCompressed> for Signature {
-    type Error = BlsError;
-
-    fn try_from(signature: SignatureCompressed) -> Result<Self, Self::Error> {
-        (&signature).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&SignatureCompressed> for Signature {
-    type Error = BlsError;
-
-    fn try_from(signature: &SignatureCompressed) -> Result<Self, Self::Error> {
-        let maybe_compressed: Option<G2Affine> = G2Affine::from_compressed(&signature.0).into();
-        let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(compressed.to_uncompressed()))
-    }
-}
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.

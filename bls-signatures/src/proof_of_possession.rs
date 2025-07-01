@@ -65,38 +65,13 @@ impl AsProofOfPossessionProjective for ProofOfPossessionProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl From<ProofOfPossessionProjective> for ProofOfPossession {
-    fn from(proof: ProofOfPossessionProjective) -> Self {
-        (&proof).into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl From<&ProofOfPossessionProjective> for ProofOfPossession {
-    fn from(proof: &ProofOfPossessionProjective) -> Self {
-        Self(proof.0.to_uncompressed())
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<ProofOfPossession> for ProofOfPossessionProjective {
-    type Error = BlsError;
-
-    fn try_from(proof: ProofOfPossession) -> Result<Self, Self::Error> {
-        (&proof).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&ProofOfPossession> for ProofOfPossessionProjective {
-    type Error = BlsError;
-
-    fn try_from(proof: &ProofOfPossession) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&proof.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.into()))
-    }
-}
+impl_bls_conversions!(
+    ProofOfPossessionProjective,
+    ProofOfPossession,
+    ProofOfPossessionCompressed,
+    G2Affine,
+    BlsError
+);
 
 #[cfg(not(target_os = "solana"))]
 impl AsProofOfPossessionProjective for ProofOfPossession {
@@ -168,66 +143,6 @@ impl_from_str!(
     BYTES_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
     BASE64_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_BASE64_SIZE
 );
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<ProofOfPossession> for ProofOfPossessionCompressed {
-    type Error = BlsError;
-
-    fn try_from(proof: ProofOfPossession) -> Result<Self, Self::Error> {
-        (&proof).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&ProofOfPossession> for ProofOfPossessionCompressed {
-    type Error = BlsError;
-
-    fn try_from(proof: &ProofOfPossession) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_uncompressed(&proof.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(uncompressed.to_compressed()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<ProofOfPossessionCompressed> for ProofOfPossession {
-    type Error = BlsError;
-
-    fn try_from(proof: ProofOfPossessionCompressed) -> Result<Self, Self::Error> {
-        (&proof).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&ProofOfPossessionCompressed> for ProofOfPossession {
-    type Error = BlsError;
-
-    fn try_from(proof: &ProofOfPossessionCompressed) -> Result<Self, Self::Error> {
-        let maybe_compressed: Option<G2Affine> = G2Affine::from_compressed(&proof.0).into();
-        let compressed = maybe_compressed.ok_or(BlsError::PointConversion)?;
-        Ok(Self(compressed.to_uncompressed()))
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<ProofOfPossessionCompressed> for ProofOfPossessionProjective {
-    type Error = BlsError;
-
-    fn try_from(proof: ProofOfPossessionCompressed) -> Result<Self, Self::Error> {
-        (&proof).try_into()
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
-impl TryFrom<&ProofOfPossessionCompressed> for ProofOfPossessionProjective {
-    type Error = BlsError;
-
-    fn try_from(proof: &ProofOfPossessionCompressed) -> Result<Self, Self::Error> {
-        let maybe_uncompressed: Option<G2Affine> = G2Affine::from_compressed(&proof.0).into();
-        let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
-        Ok(ProofOfPossessionProjective(uncompressed.into()))
-    }
-}
 
 #[cfg(not(target_os = "solana"))]
 impl AsProofOfPossessionProjective for ProofOfPossessionCompressed {
