@@ -30,7 +30,7 @@ pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_BASE64_SIZE: usize = 128;
 pub const BLS_PROOF_OF_POSSESSION_AFFINE_SIZE: usize = 192;
 
 /// Size of a BLS proof of possession in an affine point representation in base64
-pub const BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE: usize = 256;
+pub const BLS_PROOF_OF_POSSESSION_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A trait for types that can be converted into a `ProofOfPossessionProjective`.
 #[cfg(not(target_os = "solana"))]
@@ -166,7 +166,7 @@ impl fmt::Display for ProofOfPossession {
 impl_from_str!(
     TYPE = ProofOfPossession,
     BYTES_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
-    BASE64_LEN = BLS_PROOF_OF_POSSESSKON_AFFINE_BASE64_SIZE
+    BASE64_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_BASE64_SIZE
 );
 
 #[cfg(not(target_os = "solana"))]
