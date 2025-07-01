@@ -139,27 +139,14 @@ impl PubkeyProjective {
 impl<T: AsPubkeyProjective> VerifiablePubkey for T {}
 
 #[cfg(not(target_os = "solana"))]
-impl AsPubkeyProjective for PubkeyProjective {
-    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
-        Ok(*self)
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
 impl_bls_conversions!(
     PubkeyProjective,
     Pubkey,
     PubkeyCompressed,
     G1Affine,
-    BlsError
+    BlsError,
+    AsPubkeyProjective
 );
-
-#[cfg(not(target_os = "solana"))]
-impl AsPubkeyProjective for Pubkey {
-    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
-        PubkeyProjective::try_from(self)
-    }
-}
 
 #[cfg(not(target_os = "solana"))]
 impl TryFrom<&[u8]> for PubkeyProjective {
@@ -243,13 +230,6 @@ impl_from_str!(
     BYTES_LEN = BLS_PUBLIC_KEY_AFFINE_SIZE,
     BASE64_LEN = BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE
 );
-
-#[cfg(not(target_os = "solana"))]
-impl AsPubkeyProjective for PubkeyCompressed {
-    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
-        PubkeyProjective::try_from(self)
-    }
-}
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.

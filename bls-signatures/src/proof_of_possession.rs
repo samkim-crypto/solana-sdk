@@ -58,27 +58,14 @@ pub struct ProofOfPossessionProjective(pub(crate) G2Projective);
 impl<T: AsProofOfPossessionProjective> VerifiableProofOfPossession for T {}
 
 #[cfg(not(target_os = "solana"))]
-impl AsProofOfPossessionProjective for ProofOfPossessionProjective {
-    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
-        Ok(*self)
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
 impl_bls_conversions!(
     ProofOfPossessionProjective,
     ProofOfPossession,
     ProofOfPossessionCompressed,
     G2Affine,
-    BlsError
+    BlsError,
+    AsProofOfPossessionProjective
 );
-
-#[cfg(not(target_os = "solana"))]
-impl AsProofOfPossessionProjective for ProofOfPossession {
-    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
-        ProofOfPossessionProjective::try_from(self)
-    }
-}
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -143,13 +130,6 @@ impl_from_str!(
     BYTES_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_SIZE,
     BASE64_LEN = BLS_PROOF_OF_POSSESSION_AFFINE_BASE64_SIZE
 );
-
-#[cfg(not(target_os = "solana"))]
-impl AsProofOfPossessionProjective for ProofOfPossessionCompressed {
-    fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError> {
-        ProofOfPossessionProjective::try_from(self)
-    }
-}
 
 // Byte arrays are both `Pod` and `Zeraoble`, but the traits `bytemuck::Pod` and
 // `bytemuck::Zeroable` can only be derived for power-of-two length byte arrays.

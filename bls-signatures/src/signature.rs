@@ -114,27 +114,14 @@ impl SignatureProjective {
 impl<T: AsSignatureProjective> VerifiableSignature for T {}
 
 #[cfg(not(target_os = "solana"))]
-impl AsSignatureProjective for SignatureProjective {
-    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
-        Ok(*self)
-    }
-}
-
-#[cfg(not(target_os = "solana"))]
 impl_bls_conversions!(
     SignatureProjective,
     Signature,
     SignatureCompressed,
     G2Affine,
-    BlsError
+    BlsError,
+    AsSignatureProjective
 );
-
-#[cfg(not(target_os = "solana"))]
-impl AsSignatureProjective for Signature {
-    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
-        SignatureProjective::try_from(self)
-    }
-}
 
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
@@ -164,13 +151,6 @@ impl_from_str!(
     BYTES_LEN = BLS_SIGNATURE_COMPRESSED_SIZE,
     BASE64_LEN = BLS_SIGNATURE_COMPRESSED_BASE64_SIZE
 );
-
-#[cfg(not(target_os = "solana"))]
-impl AsSignatureProjective for SignatureCompressed {
-    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
-        SignatureProjective::try_from(self)
-    }
-}
 
 /// A serialized BLS signature in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
