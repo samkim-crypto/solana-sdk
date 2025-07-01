@@ -5,12 +5,11 @@ use {
     crate::{
         error::BlsError,
         hash::{hash_message_to_point, hash_pubkey_to_g2},
-        proof_of_possession::ProofOfPossessionProjective,
+        proof_of_possession::{AsProofOfPossessionProjective, ProofOfPossessionProjective},
         secret_key::SecretKey,
-        signature::SignatureProjective,
+        signature::{AsSignatureProjective, SignatureProjective},
     },
     blstrs::{pairing, G1Affine, G1Projective},
-    core::convert::Infallible,
     group::{prime::PrimeCurveAffine, Group},
 };
 use {
@@ -34,6 +33,38 @@ pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 
 /// Size of a BLS public key in an affine point representation in base64
 pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
+
+/// A trait for types that can be converted into a `PubkeyProjective`.
+#[cfg(not(target_os = "solana"))]
+pub trait AsPubkeyProjective {
+    /// Attempt to convert the type into a `PubkeyProjective`.
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError>;
+}
+
+/// A trait that provides verification methods to any convertible public key type.
+#[cfg(not(target_os = "solana"))]
+pub trait VerifiablePubkey: AsPubkeyProjective {
+    /// Uses this public key to verify any convertible signature type.
+    fn verify_signature<S: AsSignatureProjective>(
+        &self,
+        signature: &S,
+        message: &[u8],
+    ) -> Result<bool, BlsError> {
+        let pubkey_projective = self.try_as_projective()?;
+        let signature_projective = signature.try_as_projective()?;
+        Ok(pubkey_projective._verify_signature(&signature_projective, message))
+    }
+
+    /// Uses this public key to verify any convertible proof of possession type.
+    fn verify_proof_of_possession<P: AsProofOfPossessionProjective>(
+        &self,
+        proof: &P,
+    ) -> Result<bool, BlsError> {
+        let pubkey_projective = self.try_as_projective()?;
+        let proof_projective = proof.try_as_projective()?;
+        Ok(pubkey_projective._verify_proof_of_possession(&proof_projective))
+    }
+}
 
 /// A BLS public key in a projective point representation
 #[cfg(not(target_os = "solana"))]
@@ -65,26 +96,6 @@ impl PubkeyProjective {
         let hashed_pubkey_bytes = hash_pubkey_to_g2(self);
         pairing(&self.0.into(), &hashed_pubkey_bytes.into())
             == pairing(&G1Affine::generator(), &proof.0.into())
-    }
-
-    /// Verify a signature and a message against a public key
-    pub fn verify_signature<S>(&self, signature: &S, message: &[u8]) -> Result<bool, BlsError>
-    where
-        for<'a> &'a S: TryInto<SignatureProjective>,
-        for<'a> <&'a S as TryInto<SignatureProjective>>::Error: Into<BlsError>,
-    {
-        let signature_projective: SignatureProjective = signature.try_into().map_err(Into::into)?;
-        Ok(self._verify_signature(&signature_projective, message))
-    }
-
-    /// Verify a proof of possession against a public key
-    pub fn verify_proof_of_possession<P>(&self, proof: &P) -> Result<bool, BlsError>
-    where
-        for<'a> &'a P: TryInto<ProofOfPossessionProjective>,
-        for<'a> <&'a P as TryInto<ProofOfPossessionProjective>>::Error: Into<BlsError>,
-    {
-        let proof_projective: ProofOfPossessionProjective = proof.try_into().map_err(Into::into)?;
-        Ok(self._verify_proof_of_possession(&proof_projective))
     }
 
     /// Construct a corresponding `BlsPubkey` for a `BlsSecretKey`
@@ -125,10 +136,12 @@ impl PubkeyProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl<'a> TryFrom<&'a PubkeyProjective> for PubkeyProjective {
-    type Error = Infallible;
-    fn try_from(pubkey: &'a PubkeyProjective) -> Result<Self, Self::Error> {
-        Ok(*pubkey)
+impl<T: AsPubkeyProjective> VerifiablePubkey for T {}
+
+#[cfg(not(target_os = "solana"))]
+impl AsPubkeyProjective for PubkeyProjective {
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
+        Ok(*self)
     }
 }
 
@@ -163,6 +176,13 @@ impl TryFrom<&Pubkey> for PubkeyProjective {
         let maybe_uncompressed: Option<G1Affine> = G1Affine::from_uncompressed(&pubkey.0).into();
         let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
         Ok(Self(uncompressed.into()))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsPubkeyProjective for Pubkey {
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
+        PubkeyProjective::try_from(self)
     }
 }
 
@@ -202,29 +222,6 @@ pub struct PubkeyCompressed(
     pub [u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
 );
 
-#[cfg(not(target_os = "solana"))]
-impl PubkeyCompressed {
-    /// Verify a signature and a message against a public key
-    pub fn verify_signature<S>(&self, signature: &S, message: &[u8]) -> Result<bool, BlsError>
-    where
-        for<'a> &'a S: TryInto<SignatureProjective>,
-        for<'a> <&'a S as TryInto<SignatureProjective>>::Error: Into<BlsError>,
-    {
-        let pubkey_projective: PubkeyProjective = self.try_into()?;
-        pubkey_projective.verify_signature(signature, message)
-    }
-
-    /// Verify a proof of possession against a public key
-    pub fn verify_proof_of_possession<P>(&self, proof: &P) -> Result<bool, BlsError>
-    where
-        for<'a> &'a P: TryInto<ProofOfPossessionProjective>,
-        for<'a> <&'a P as TryInto<ProofOfPossessionProjective>>::Error: Into<BlsError>,
-    {
-        let pubkey_projective: PubkeyProjective = self.try_into()?;
-        pubkey_projective.verify_proof_of_possession(proof)
-    }
-}
-
 impl Default for PubkeyCompressed {
     fn default() -> Self {
         Self([0; BLS_PUBLIC_KEY_COMPRESSED_SIZE])
@@ -253,29 +250,6 @@ pub struct Pubkey(
     #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_PUBLIC_KEY_AFFINE_SIZE]"))]
     pub  [u8; BLS_PUBLIC_KEY_AFFINE_SIZE],
 );
-
-#[cfg(not(target_os = "solana"))]
-impl Pubkey {
-    /// Verify a signature and a message against a public key
-    pub fn verify_signature<S>(&self, signature: &S, message: &[u8]) -> Result<bool, BlsError>
-    where
-        for<'a> &'a S: TryInto<SignatureProjective>,
-        for<'a> <&'a S as TryInto<SignatureProjective>>::Error: Into<BlsError>,
-    {
-        let pubkey_projective: PubkeyProjective = self.try_into()?;
-        pubkey_projective.verify_signature(signature, message)
-    }
-
-    /// Verify a proof of possession against a public key
-    pub fn verify_proof_of_possession<P>(&self, proof: &P) -> Result<bool, BlsError>
-    where
-        for<'a> &'a P: TryInto<ProofOfPossessionProjective>,
-        for<'a> <&'a P as TryInto<ProofOfPossessionProjective>>::Error: Into<BlsError>,
-    {
-        let pubkey_projective: PubkeyProjective = self.try_into()?;
-        pubkey_projective.verify_proof_of_possession(proof)
-    }
-}
 
 impl Default for Pubkey {
     fn default() -> Self {
@@ -352,6 +326,13 @@ impl TryFrom<&PubkeyCompressed> for PubkeyProjective {
         let maybe_uncompressed: Option<G1Affine> = G1Affine::from_compressed(&pubkey.0).into();
         let uncompressed = maybe_uncompressed.ok_or(BlsError::PointConversion)?;
         Ok(PubkeyProjective(uncompressed.into()))
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsPubkeyProjective for PubkeyCompressed {
+    fn try_as_projective(&self) -> Result<PubkeyProjective, BlsError> {
+        PubkeyProjective::try_from(self)
     }
 }
 

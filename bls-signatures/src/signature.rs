@@ -2,9 +2,11 @@
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 #[cfg(not(target_os = "solana"))]
 use {
-    crate::{error::BlsError, pubkey::PubkeyProjective},
+    crate::{
+        error::BlsError,
+        pubkey::{PubkeyProjective, VerifiablePubkey},
+    },
     blstrs::{G2Affine, G2Projective},
-    core::convert::Infallible,
     group::Group,
 };
 use {
@@ -29,6 +31,24 @@ pub const BLS_SIGNATURE_AFFINE_SIZE: usize = 192;
 /// Size of a BLS signature in an affine point representation in base64
 pub const BLS_SIGNATURE_AFFINE_BASE64_SIZE: usize = 256;
 
+/// A trait for types that can be converted into a `SignatureProjective`.
+#[cfg(not(target_os = "solana"))]
+pub trait AsSignatureProjective {
+    /// Attempt to convert the type into a `SignatureProjective`.
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError>;
+}
+
+/// A trait that provides verification methods to any convertible signature type.
+#[cfg(not(target_os = "solana"))]
+pub trait VerifiableSignature: AsSignatureProjective {
+    /// Verify the signature against any convertible public key type and a message.
+    fn verify<P: VerifiablePubkey>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError> {
+        // The logic is defined once here.
+        let signature_projective = self.try_as_projective()?;
+        pubkey.verify_signature(&signature_projective, message)
+    }
+}
+
 /// A BLS signature in a projective point representation
 #[cfg(not(target_os = "solana"))]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -43,16 +63,6 @@ impl Default for SignatureProjective {
 
 #[cfg(not(target_os = "solana"))]
 impl SignatureProjective {
-    /// Verify the signature against any convertible public key type and a message
-    pub fn verify<P>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError>
-    where
-        for<'a> &'a P: TryInto<PubkeyProjective>,
-        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
-    {
-        let pubkey_projective: PubkeyProjective = pubkey.try_into().map_err(Into::into)?;
-        Ok(pubkey_projective._verify_signature(self, message))
-    }
-
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     pub fn aggregate_with<'a, I>(&mut self, signatures: I)
@@ -101,10 +111,12 @@ impl SignatureProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl<'a> TryFrom<&'a SignatureProjective> for SignatureProjective {
-    type Error = Infallible;
-    fn try_from(signature: &'a SignatureProjective) -> Result<Self, Self::Error> {
-        Ok(*signature)
+impl<T: AsSignatureProjective> VerifiableSignature for T {}
+
+#[cfg(not(target_os = "solana"))]
+impl AsSignatureProjective for SignatureProjective {
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
+        Ok(*self)
     }
 }
 
@@ -144,6 +156,13 @@ impl TryFrom<&Signature> for SignatureProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
+impl AsSignatureProjective for Signature {
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
+        SignatureProjective::try_from(self)
+    }
+}
+
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -154,19 +173,6 @@ pub struct SignatureCompressed(
     #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_COMPRESSED_SIZE]"))]
     pub  [u8; BLS_SIGNATURE_COMPRESSED_SIZE],
 );
-
-#[cfg(not(target_os = "solana"))]
-impl SignatureCompressed {
-    /// Verify the signature against any convertible public key type and a message
-    pub fn verify<P>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError>
-    where
-        for<'a> &'a P: TryInto<PubkeyProjective>,
-        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
-    {
-        let signature_projective: SignatureProjective = self.try_into()?;
-        signature_projective.verify(pubkey, message)
-    }
-}
 
 impl Default for SignatureCompressed {
     fn default() -> Self {
@@ -206,6 +212,13 @@ impl TryFrom<&SignatureCompressed> for SignatureProjective {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
+impl AsSignatureProjective for SignatureCompressed {
+    fn try_as_projective(&self) -> Result<SignatureProjective, BlsError> {
+        SignatureProjective::try_from(self)
+    }
+}
+
 /// A serialized BLS signature in an affine point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
@@ -216,19 +229,6 @@ pub struct Signature(
     #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_AFFINE_SIZE]"))]
     pub  [u8; BLS_SIGNATURE_AFFINE_SIZE],
 );
-
-#[cfg(not(target_os = "solana"))]
-impl Signature {
-    /// Verify the signature against any convertible public key type and a message
-    pub fn verify<P>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError>
-    where
-        for<'a> &'a P: TryInto<PubkeyProjective>,
-        for<'a> <&'a P as TryInto<PubkeyProjective>>::Error: Into<BlsError>,
-    {
-        let signature_projective: SignatureProjective = self.try_into()?;
-        signature_projective.verify(pubkey, message)
-    }
-}
 
 impl Default for Signature {
     fn default() -> Self {
