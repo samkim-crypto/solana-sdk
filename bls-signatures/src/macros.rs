@@ -41,7 +41,6 @@ macro_rules! impl_bls_conversions {
         $affine:ident,
         $compressed:ident,
         $point_type:ty,
-        $error_type:ty,
         $as_trait:ident
     ) => {
         // ---
@@ -64,18 +63,18 @@ macro_rules! impl_bls_conversions {
         // back to the projective type.
         // ---
         impl TryFrom<&$affine> for $projective {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(affine: &$affine) -> Result<Self, Self::Error> {
                 let maybe_point: Option<$point_type> =
                     <$point_type>::from_uncompressed(&affine.0).into();
-                let point = maybe_point.ok_or(<$error_type>::PointConversion)?;
+                let point = maybe_point.ok_or(crate::error::BlsError::PointConversion)?;
                 Ok(Self(point.into()))
             }
         }
 
         impl TryFrom<$affine> for $projective {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(affine: $affine) -> Result<Self, Self::Error> {
                 Self::try_from(&affine)
@@ -83,18 +82,18 @@ macro_rules! impl_bls_conversions {
         }
 
         impl TryFrom<&$compressed> for $projective {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(compressed: &$compressed) -> Result<Self, Self::Error> {
                 let maybe_point: Option<$point_type> =
                     <$point_type>::from_compressed(&compressed.0).into();
-                let point = maybe_point.ok_or(<$error_type>::PointConversion)?;
+                let point = maybe_point.ok_or(crate::error::BlsError::PointConversion)?;
                 Ok(Self(point.into()))
             }
         }
 
         impl TryFrom<$compressed> for $projective {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(compressed: $compressed) -> Result<Self, Self::Error> {
                 Self::try_from(&compressed)
@@ -105,18 +104,18 @@ macro_rules! impl_bls_conversions {
         // Fallible conversions between the two serialized formats (affine and compressed).
         // ---
         impl TryFrom<&$affine> for $compressed {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(affine: &$affine) -> Result<Self, Self::Error> {
                 let maybe_point: Option<$point_type> =
                     <$point_type>::from_uncompressed(&affine.0).into();
-                let point = maybe_point.ok_or(<$error_type>::PointConversion)?;
+                let point = maybe_point.ok_or(crate::error::BlsError::PointConversion)?;
                 Ok(Self(point.to_compressed()))
             }
         }
 
         impl TryFrom<$affine> for $compressed {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(affine: $affine) -> Result<Self, Self::Error> {
                 Self::try_from(&affine)
@@ -124,18 +123,18 @@ macro_rules! impl_bls_conversions {
         }
 
         impl TryFrom<&$compressed> for $affine {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(compressed: &$compressed) -> Result<Self, Self::Error> {
                 let maybe_point: Option<$point_type> =
                     <$point_type>::from_compressed(&compressed.0).into();
-                let point = maybe_point.ok_or(<$error_type>::PointConversion)?;
+                let point = maybe_point.ok_or(crate::error::BlsError::PointConversion)?;
                 Ok(Self(point.to_uncompressed()))
             }
         }
 
         impl TryFrom<$compressed> for $affine {
-            type Error = $error_type;
+            type Error = crate::error::BlsError;
 
             fn try_from(compressed: $compressed) -> Result<Self, Self::Error> {
                 Self::try_from(&compressed)

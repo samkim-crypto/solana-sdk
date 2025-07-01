@@ -63,7 +63,6 @@ impl_bls_conversions!(
     ProofOfPossession,
     ProofOfPossessionCompressed,
     G2Affine,
-    BlsError,
     AsProofOfPossessionProjective
 );
 

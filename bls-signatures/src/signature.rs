@@ -119,7 +119,6 @@ impl_bls_conversions!(
     Signature,
     SignatureCompressed,
     G2Affine,
-    BlsError,
     AsSignatureProjective
 );
 

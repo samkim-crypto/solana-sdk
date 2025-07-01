@@ -144,7 +144,6 @@ impl_bls_conversions!(
     Pubkey,
     PubkeyCompressed,
     G1Affine,
-    BlsError,
     AsPubkeyProjective
 );
 
