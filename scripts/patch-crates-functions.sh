@@ -10,6 +10,7 @@ crate_dirs=(
   account-info
   address-lookup-table-interface
   atomic-u64
+  base3-encoding
   big-mod-exp
   bincode
   blake3-hasher
