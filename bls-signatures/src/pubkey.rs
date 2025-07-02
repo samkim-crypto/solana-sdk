@@ -72,14 +72,15 @@ pub trait VerifiablePubkey: AsPubkeyProjective {
 pub struct PubkeyProjective(pub(crate) G1Projective);
 
 #[cfg(not(target_os = "solana"))]
-impl Default for PubkeyProjective {
-    fn default() -> Self {
+impl PubkeyProjective {
+    /// Creates the identity element, which is the starting point for aggregation
+    ///
+    /// The identity element is not a valid public key and it should only be used
+    /// for the purpose of aggregation
+    pub fn identity() -> Self {
         Self(G1Projective::identity())
     }
-}
 
-#[cfg(not(target_os = "solana"))]
-impl PubkeyProjective {
     /// Verify a signature and a message against a public key
     pub(crate) fn _verify_signature(
         &self,
