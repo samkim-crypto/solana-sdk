@@ -55,14 +55,15 @@ pub trait VerifiableSignature: AsSignatureProjective {
 pub struct SignatureProjective(pub(crate) G2Projective);
 
 #[cfg(not(target_os = "solana"))]
-impl Default for SignatureProjective {
-    fn default() -> Self {
+impl SignatureProjective {
+    /// Creates the identity element, which is the starting point for aggregation
+    ///
+    /// The identity element is not a valid signature and it should only be used
+    /// for the purpose of aggregation
+    pub fn identity() -> Self {
         Self(G2Projective::identity())
     }
-}
 
-#[cfg(not(target_os = "solana"))]
-impl SignatureProjective {
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     pub fn aggregate_with<'a, S: 'a + AsSignatureProjective + ?Sized, I>(
