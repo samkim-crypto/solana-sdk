@@ -218,7 +218,7 @@ mod tests {
             pubkey::{Pubkey, PubkeyCompressed},
         },
         core::str::FromStr,
-        std::{string::ToString, vec, vec::Vec},
+        std::{string::ToString, vec::Vec},
     };
 
     #[test]
@@ -307,8 +307,8 @@ mod tests {
 
         // basic case
         assert!(SignatureProjective::aggregate_verify(
-            vec![&keypair0.public, &keypair1.public],
-            vec![&signature0, &signature1],
+            std::vec![&keypair0.public, &keypair1.public],
+            std::vec![&signature0, &signature1],
             test_message,
         )
         .unwrap());
@@ -319,8 +319,8 @@ mod tests {
         let signature0_affine: Signature = signature0.into();
         let signature1_affine: Signature = signature1.into();
         assert!(SignatureProjective::aggregate_verify(
-            vec![&pubkey0_affine, &pubkey1_affine],
-            vec![&signature0_affine, &signature1_affine],
+            std::vec![&pubkey0_affine, &pubkey1_affine],
+            std::vec![&signature0_affine, &signature1_affine],
             test_message,
         )
         .unwrap());
@@ -329,8 +329,8 @@ mod tests {
         let aggregate_signature =
             SignatureProjective::aggregate([&signature0, &signature1]).unwrap();
         assert!(SignatureProjective::aggregate_verify(
-            vec![&keypair0.public, &keypair1.public],
-            vec![&aggregate_signature],
+            std::vec![&keypair0.public, &keypair1.public],
+            std::vec![&aggregate_signature],
             test_message,
         )
         .unwrap());
@@ -339,24 +339,24 @@ mod tests {
         let aggregate_pubkey =
             PubkeyProjective::aggregate([&keypair0.public, &keypair1.public]).unwrap();
         assert!(SignatureProjective::aggregate_verify(
-            vec![&aggregate_pubkey],
-            vec![&signature0, &signature1],
+            std::vec![&aggregate_pubkey],
+            std::vec![&signature0, &signature1],
             test_message,
         )
         .unwrap());
 
         // empty set of public keys or signatures
         let err = SignatureProjective::aggregate_verify(
-            vec![] as Vec<&PubkeyProjective>,
-            vec![&signature0, &signature1],
+            std::vec![] as Vec<&PubkeyProjective>,
+            std::vec![&signature0, &signature1],
             test_message,
         )
         .unwrap_err();
         assert_eq!(err, BlsError::EmptyAggregation);
 
         let err = SignatureProjective::aggregate_verify(
-            vec![&keypair0.public, &keypair1.public],
-            vec![] as Vec<&SignatureProjective>,
+            std::vec![&keypair0.public, &keypair1.public],
+            std::vec![] as Vec<&SignatureProjective>,
             test_message,
         )
         .unwrap_err();
@@ -386,9 +386,9 @@ mod tests {
             Signature::from(signature2_projective).try_into().unwrap(); // Compressed
 
         let dyn_pubkeys: Vec<&dyn AsPubkeyProjective> =
-            vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
+            std::vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
         let dyn_signatures: Vec<&dyn AsSignatureProjective> =
-            vec![&signature0, &signature1_affine, &signature2_compressed];
+            std::vec![&signature0, &signature1_affine, &signature2_compressed];
 
         assert!(
             SignatureProjective::aggregate_verify(dyn_pubkeys, dyn_signatures, test_message)
@@ -397,9 +397,9 @@ mod tests {
 
         let wrong_message = b"this is not the correct message";
         let dyn_pubkeys_fail: Vec<&dyn AsPubkeyProjective> =
-            vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
+            std::vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
         let dyn_signatures_fail: Vec<&dyn AsSignatureProjective> =
-            vec![&signature0, &signature1_affine, &signature2_compressed];
+            std::vec![&signature0, &signature1_affine, &signature2_compressed];
         assert!(!SignatureProjective::aggregate_verify(
             dyn_pubkeys_fail,
             dyn_signatures_fail,

@@ -262,7 +262,7 @@ mod tests {
             signature::{Signature, SignatureCompressed},
         },
         core::str::FromStr,
-        std::{string::ToString, vec, vec::Vec},
+        std::{string::ToString, vec::Vec},
     };
 
     #[test]
@@ -362,7 +362,7 @@ mod tests {
         let pubkey_compressed: PubkeyCompressed = Pubkey::from(keypair1.public).try_into().unwrap();
 
         let dyn_pubkeys: Vec<&dyn AsPubkeyProjective> =
-            vec![&pubkey_projective, &pubkey_affine, &pubkey_compressed];
+            std::vec![&pubkey_projective, &pubkey_affine, &pubkey_compressed];
 
         let aggregate_from_dyn = PubkeyProjective::aggregate(dyn_pubkeys).unwrap();
         let pubkeys_for_baseline = [keypair0.public, keypair1.public, keypair1.public];
