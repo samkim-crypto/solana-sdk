@@ -278,6 +278,7 @@ mod tests {
         super::*,
         crate::compression::target_arch::convert_endianness,
         ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Compress, Validate},
+        serde_derive::Deserialize,
         std::ops::Neg,
         target_arch::{
             alt_bn128_g1_compress, alt_bn128_g1_decompress, alt_bn128_g2_compress,
@@ -389,8 +390,6 @@ mod tests {
     }
     #[test]
     fn alt_bn128_compression_pairing_test_input() {
-        use serde_derive::Deserialize;
-
         let test_data = include_str!("../tests/data/pairing_cases.json");
 
         #[derive(Deserialize)]

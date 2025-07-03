@@ -447,6 +447,7 @@ mod tests {
         ark_bn254::g1::G1Affine,
         ark_ec::AffineRepr,
         ark_serialize::{CanonicalSerialize, Compress},
+        serde_derive::Deserialize,
     };
 
     #[test]
@@ -471,8 +472,6 @@ mod tests {
 
     #[test]
     fn alt_bn128_addition_test() {
-        use serde_derive::Deserialize;
-
         let test_data = include_str!("../tests/data/addition_cases.json");
 
         #[derive(Deserialize)]
@@ -497,8 +496,6 @@ mod tests {
 
     #[test]
     fn alt_bn128_multiplication_test() {
-        use serde_derive::Deserialize;
-
         let test_data = include_str!("../tests/data/multiplication_cases.json");
 
         #[derive(Deserialize)]
@@ -521,8 +518,6 @@ mod tests {
 
     #[test]
     fn alt_bn128_pairing_test() {
-        use serde_derive::Deserialize;
-
         let test_data = include_str!("../tests/data/pairing_cases.json");
 
         #[derive(Deserialize)]
