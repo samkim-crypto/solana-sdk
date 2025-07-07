@@ -4,8 +4,8 @@ use {
 };
 
 fn create_test_data_bytes(len: usize) -> (Vec<u8>, Vec<u8>) {
-    let mut base = vec![0u8; (len + 7) / 8];
-    let mut fallback = vec![0u8; (len + 7) / 8];
+    let mut base = vec![0u8; len.div_ceil(8)];
+    let mut fallback = vec![0u8; len.div_ceil(8)];
     for i in 0..len {
         match i % 3 {
             0 => { /* (false, false) */ }
