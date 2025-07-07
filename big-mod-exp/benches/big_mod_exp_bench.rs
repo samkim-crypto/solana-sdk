@@ -1,6 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use serde::Deserialize;
-use solana_big_mod_exp::big_mod_exp;
+use {
+    criterion::{black_box, criterion_group, criterion_main, Criterion},
+    serde::Deserialize,
+    solana_big_mod_exp::big_mod_exp,
+};
 
 #[derive(Deserialize, Debug)]
 struct BenchmarkData {
