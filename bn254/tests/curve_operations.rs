@@ -83,6 +83,11 @@ fn alt_bn128_compression_pairing_test_input() {
 
     test_cases.iter().for_each(|test| {
         let input = array_bytes::hex2bytes_unchecked(&test.input);
+
+        // This test reuses data from the pairing test suite, which can include
+        // inputs too short for this test's logic (e.g. the "empty" test case).
+        // We skip those cases to prevent a panic when slicing the input bytes
+        // for the G1 and G2 points.
         if input.len() < 192 {
             return;
         }
