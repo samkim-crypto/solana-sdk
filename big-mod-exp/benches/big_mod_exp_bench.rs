@@ -52,38 +52,38 @@ fn all_benches(c: &mut Criterion) {
 
     group_exp_3.bench_function("512 bits odd", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&const_exp_data.bits_512.base),
-                black_box(&exponent_3),
-                black_box(&const_exp_data.bits_512.modulus_odd),
-            )
+            black_box(big_mod_exp(
+                &const_exp_data.bits_512.base,
+                &exponent_3,
+                &const_exp_data.bits_512.modulus_odd,
+            ))
         })
     });
     group_exp_3.bench_function("512 bits even", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&const_exp_data.bits_512.base),
-                black_box(&exponent_3),
-                black_box(&const_exp_data.bits_512.modulus_even),
-            )
+            black_box(big_mod_exp(
+                &const_exp_data.bits_512.base,
+                &exponent_3,
+                &const_exp_data.bits_512.modulus_even,
+            ))
         })
     });
     group_exp_3.bench_function("1024 bits odd", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&const_exp_data.bits_1024.base),
-                black_box(&exponent_3),
-                black_box(&const_exp_data.bits_1024.modulus_odd),
-            )
+            black_box(big_mod_exp(
+                &const_exp_data.bits_1024.base,
+                &exponent_3,
+                &const_exp_data.bits_1024.modulus_odd,
+            ))
         })
     });
     group_exp_3.bench_function("1024 bits even", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&const_exp_data.bits_1024.base),
-                black_box(&exponent_3),
-                black_box(&const_exp_data.bits_1024.modulus_even),
-            )
+            black_box(big_mod_exp(
+                &const_exp_data.bits_1024.base,
+                &exponent_3,
+                &const_exp_data.bits_1024.modulus_even,
+            ))
         })
     });
     group_exp_3.finish();
@@ -94,20 +94,20 @@ fn all_benches(c: &mut Criterion) {
 
     group_exp_65537.bench_function("2048 bits odd", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&const_exp_data.bits_2048.base),
-                black_box(&exponent_65537),
-                black_box(&const_exp_data.bits_2048.modulus_odd),
-            )
+            black_box(big_mod_exp(
+                &const_exp_data.bits_2048.base,
+                &exponent_65537,
+                &const_exp_data.bits_2048.modulus_odd,
+            ))
         })
     });
     group_exp_65537.bench_function("4096 bits odd", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&const_exp_data.bits_4096.base),
-                black_box(&exponent_65537),
-                black_box(&const_exp_data.bits_4096.modulus_odd),
-            )
+            black_box(big_mod_exp(
+                &const_exp_data.bits_4096.base,
+                &exponent_65537,
+                &const_exp_data.bits_4096.modulus_odd,
+            ))
         })
     });
     group_exp_65537.finish();
@@ -118,38 +118,38 @@ fn all_benches(c: &mut Criterion) {
 
     group_variable.bench_function("512-bit exp, 512-bit mod", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&var_exp_data.bits_512.base),
-                black_box(&var_exp_data.bits_512.exponent),
-                black_box(&var_exp_data.bits_512.modulus),
-            )
+            black_box(big_mod_exp(
+                &var_exp_data.bits_512.base,
+                &var_exp_data.bits_512.exponent,
+                &var_exp_data.bits_512.modulus,
+            ))
         })
     });
     group_variable.bench_function("1024-bit exp, 1024-bit mod", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&var_exp_data.bits_1024.base),
-                black_box(&var_exp_data.bits_1024.exponent),
-                black_box(&var_exp_data.bits_1024.modulus),
-            )
+            black_box(big_mod_exp(
+                &var_exp_data.bits_1024.base,
+                &var_exp_data.bits_1024.exponent,
+                &var_exp_data.bits_1024.modulus,
+            ))
         })
     });
     group_variable.bench_function("2048-bit exp, 2048-bit mod", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&var_exp_data.bits_2048.base),
-                black_box(&var_exp_data.bits_2048.exponent),
-                black_box(&var_exp_data.bits_2048.modulus),
-            )
+            black_box(big_mod_exp(
+                &var_exp_data.bits_2048.base,
+                &var_exp_data.bits_2048.exponent,
+                &var_exp_data.bits_2048.modulus,
+            ))
         })
     });
     group_variable.bench_function("4096-bit exp, 4096-bit mod", |b| {
         b.iter(|| {
-            big_mod_exp(
-                black_box(&var_exp_data.bits_4096.base),
-                black_box(&var_exp_data.bits_4096.exponent),
-                black_box(&var_exp_data.bits_4096.modulus),
-            )
+            black_box(big_mod_exp(
+                &var_exp_data.bits_4096.base,
+                &var_exp_data.bits_4096.exponent,
+                &var_exp_data.bits_4096.modulus,
+            ))
         })
     });
     group_variable.finish();
