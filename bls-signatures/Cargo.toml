@@ -47,9 +47,14 @@ subtle = { workspace = true, optional = true }
 
 [dev-dependencies]
 bincode = { workspace = true }
+criterion = { workspace = true }
 solana-bls-signatures = { path = ".", features = ["std"] }
 solana-keypair = { workspace = true }
 tempfile = { workspace = true }
 
 [lints]
 workspace = true
+
+[[bench]]
+name = "bls_signatures"
+harness = false
