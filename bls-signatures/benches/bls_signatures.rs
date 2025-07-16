@@ -1,8 +1,10 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use solana_bls_signatures::{
-    keypair::Keypair,
-    pubkey::{VerifiablePubkey, PubkeyProjective},
-    signature::{SignatureProjective},
+use {
+    criterion::{black_box, criterion_group, criterion_main, Criterion},
+    solana_bls_signatures::{
+        keypair::Keypair,
+        pubkey::{PubkeyProjective, VerifiablePubkey},
+        signature::SignatureProjective,
+    },
 };
 
 // Benchmark for verifying a single signature
@@ -17,9 +19,7 @@ fn bench_single_signature(c: &mut Criterion) {
 
     let signature = keypair.sign(message);
     group.bench_function("verify_signature", |b| {
-        b.iter(|| {
-            black_box(keypair.public.verify_signature(&signature, message)).unwrap()
-        });
+        b.iter(|| black_box(keypair.public.verify_signature(&signature, message)).unwrap());
     });
     group.finish();
 }
@@ -36,22 +36,24 @@ fn bench_aggregate(c: &mut Criterion) {
             keypairs.iter().map(|kp| kp.sign(message)).collect();
 
         // Benchmark for aggregating multiple signatures
-        group.bench_function(format!("{} signature aggregation", num_validators), |b| {
+        group.bench_function(format!("{num_validators} signature aggregation"), |b| {
             b.iter(|| SignatureProjective::aggregate(black_box(&signatures)));
         });
 
         // Benchmark for aggregating multiple public keys
-        group.bench_function(format!("{} pubkey aggregation", num_validators), |b| {
+        group.bench_function(format!("{num_validators} pubkey aggregation"), |b| {
             b.iter(|| PubkeyProjective::aggregate(black_box(&pubkeys)));
         });
 
         let aggregate_signature = SignatureProjective::aggregate(&signatures).unwrap();
         let aggregate_pubkey = PubkeyProjective::aggregate(&pubkeys).unwrap();
 
-        group.bench_function(format!("{} aggregate verification", num_validators), |b| {
+        group.bench_function(format!("{num_validators} aggregate verification"), |b| {
             b.iter(|| {
                 let verification_result = black_box(
-                    aggregate_pubkey.verify_signature(&aggregate_signature, message).unwrap(),
+                    aggregate_pubkey
+                        .verify_signature(&aggregate_signature, message)
+                        .unwrap(),
                 );
                 assert!(verification_result);
             });
