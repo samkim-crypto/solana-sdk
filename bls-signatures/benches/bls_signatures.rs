@@ -1,10 +1,11 @@
 use {
-    criterion::{black_box, criterion_group, criterion_main, Criterion},
+    criterion::{criterion_group, criterion_main, Criterion},
     solana_bls_signatures::{
         keypair::Keypair,
         pubkey::{PubkeyProjective, VerifiablePubkey},
         signature::SignatureProjective,
     },
+    std::hint::black_box,
 };
 
 // Benchmark for verifying a single signature
@@ -14,7 +15,7 @@ fn bench_single_signature(c: &mut Criterion) {
     let message = b"test message";
 
     group.bench_function("signature_generation", |b| {
-        b.iter(|| keypair.sign(black_box(message)));
+        b.iter(|| black_box(keypair.sign(message)));
     });
 
     let signature = keypair.sign(message);
@@ -37,12 +38,12 @@ fn bench_aggregate(c: &mut Criterion) {
 
         // Benchmark for aggregating multiple signatures
         group.bench_function(format!("{num_validators} signature aggregation"), |b| {
-            b.iter(|| SignatureProjective::aggregate(black_box(&signatures)));
+            b.iter(|| black_box(SignatureProjective::aggregate(&signatures)));
         });
 
         // Benchmark for aggregating multiple public keys
         group.bench_function(format!("{num_validators} pubkey aggregation"), |b| {
-            b.iter(|| PubkeyProjective::aggregate(black_box(&pubkeys)));
+            b.iter(|| black_box(PubkeyProjective::aggregate(&pubkeys)));
         });
 
         let aggregate_signature = SignatureProjective::aggregate(&signatures).unwrap();
@@ -64,7 +65,7 @@ fn bench_aggregate(c: &mut Criterion) {
 
 // Benchmark for generating a new keypair
 fn bench_key_generation(c: &mut Criterion) {
-    c.bench_function("key_generation", |b| b.iter(Keypair::new));
+    c.bench_function("key_generation", |b| b.iter(|| black_box(Keypair::new)));
 }
 
 // Benchmark for creating and verifying a proof of possession
@@ -73,7 +74,7 @@ fn bench_proof_of_possession(c: &mut Criterion) {
     let pop = keypair.proof_of_possession();
 
     c.bench_function("proof_of_possession_creation", |b| {
-        b.iter(|| keypair.proof_of_possession());
+        b.iter(|| black_box(keypair.proof_of_possession()));
     });
 
     c.bench_function("proof_of_possession_verification", |b| {
