@@ -9,7 +9,8 @@ use {
         secret_key::SecretKey,
         signature::{AsSignatureProjective, SignatureProjective},
     },
-    blstrs::{pairing, G1Affine, G1Projective},
+    pairing::{MultiMillerLoop, MillerLoopResult},
+    blstrs::{pairing, G1Affine, G1Projective, Gt, G2Affine, G2Prepared, Bls12},
     group::{prime::PrimeCurveAffine, Group},
 };
 use {
@@ -87,9 +88,23 @@ impl PubkeyProjective {
         signature: &SignatureProjective,
         message: &[u8],
     ) -> bool {
-        let hashed_message = hash_message_to_point(message);
-        pairing(&self.0.into(), &hashed_message.into())
-            == pairing(&G1Affine::generator(), &signature.0.into())
+        // The verification equation is e(pubkey, H(m)) = e(g1, signature).
+        // This can be rewritten as e(pubkey, H(m)) * e(-g1, signature) = 1, which
+        // allows for a more efficient verification using a multi-miller loop.
+        let hashed_message: G2Affine = hash_message_to_point(message).into();
+        let pubkey_affine: G1Affine = self.0.into();
+        let neg_g1_generator_affine: G1Affine = (-G1Projective::generator()).into();
+        let signature_affine: G2Affine = signature.0.into();
+
+        let hashed_message_prepared = G2Prepared::from(hashed_message);
+        let signature_prepared = G2Prepared::from(signature_affine);
+
+         let miller_loop_result = Bls12::multi_miller_loop(&[
+            (&pubkey_affine, &hashed_message_prepared),
+            (&neg_g1_generator_affine, &signature_prepared),
+        ]);
+
+        miller_loop_result.final_exponentiation() == Gt::identity()
     }
 
     /// Verify a proof of possession against a public key

@@ -24,6 +24,7 @@ std = ["dep:serde_json"]
 base64 = { workspace = true }
 bytemuck = { workspace = true, optional = true }
 cfg_eval = { workspace = true, optional = true }
+pairing = { workspace = true }
 serde = { workspace = true, features = ["derive"], optional = true }
 serde_json = { workspace = true, optional = true }
 serde_with = { workspace = true, features = ["macros"], optional = true }
