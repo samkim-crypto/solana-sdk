@@ -9,9 +9,9 @@ use {
         secret_key::SecretKey,
         signature::{AsSignatureProjective, SignatureProjective},
     },
-    pairing::{MultiMillerLoop, MillerLoopResult},
-    blstrs::{G1Affine, G1Projective, Gt, G2Affine, G2Prepared, Bls12},
+    blstrs::{Bls12, G1Affine, G1Projective, G2Affine, G2Prepared, Gt},
     group::Group,
+    pairing::{MillerLoopResult, MultiMillerLoop},
     std::sync::LazyLock,
 };
 use {
@@ -103,7 +103,7 @@ impl PubkeyProjective {
         let hashed_message_prepared = G2Prepared::from(hashed_message);
         let signature_prepared = G2Prepared::from(signature_affine);
 
-         let miller_loop_result = Bls12::multi_miller_loop(&[
+        let miller_loop_result = Bls12::multi_miller_loop(&[
             (&pubkey_affine, &hashed_message_prepared),
             (&NEG_G1_GENERATOR_AFFINE, &signature_prepared),
         ]);
