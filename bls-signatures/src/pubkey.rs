@@ -11,8 +11,8 @@ use {
     },
     blstrs::{Bls12, G1Affine, G1Projective, G2Affine, G2Prepared, Gt},
     group::Group,
+    once_cell::sync::Lazy,
     pairing::{MillerLoopResult, MultiMillerLoop},
-    std::sync::LazyLock,
 };
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
@@ -37,8 +37,7 @@ pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
 
 #[cfg(not(target_os = "solana"))]
-static NEG_G1_GENERATOR_AFFINE: LazyLock<G1Affine> =
-    LazyLock::new(|| (-G1Projective::generator()).into());
+static NEG_G1_GENERATOR_AFFINE: Lazy<G1Affine> = Lazy::new(|| (-G1Projective::generator()).into());
 
 /// A trait for types that can be converted into a `PubkeyProjective`.
 #[cfg(not(target_os = "solana"))]
