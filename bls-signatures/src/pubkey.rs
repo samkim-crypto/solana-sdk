@@ -12,6 +12,7 @@ use {
     pairing::{MultiMillerLoop, MillerLoopResult},
     blstrs::{pairing, G1Affine, G1Projective, Gt, G2Affine, G2Prepared, Bls12},
     group::{prime::PrimeCurveAffine, Group},
+    std::sync::LazyLock,
 };
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
@@ -34,6 +35,10 @@ pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 
 /// Size of a BLS public key in an affine point representation in base64
 pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
+
+#[cfg(not(target_os = "solana"))]
+static NEG_G1_GENERATOR_AFFINE: LazyLock<G1Affine> =
+    LazyLock::new(|| (-G1Projective::generator()).into());
 
 /// A trait for types that can be converted into a `PubkeyProjective`.
 #[cfg(not(target_os = "solana"))]
@@ -93,7 +98,6 @@ impl PubkeyProjective {
         // allows for a more efficient verification using a multi-miller loop.
         let hashed_message: G2Affine = hash_message_to_point(message).into();
         let pubkey_affine: G1Affine = self.0.into();
-        let neg_g1_generator_affine: G1Affine = (-G1Projective::generator()).into();
         let signature_affine: G2Affine = signature.0.into();
 
         let hashed_message_prepared = G2Prepared::from(hashed_message);
@@ -101,7 +105,7 @@ impl PubkeyProjective {
 
          let miller_loop_result = Bls12::multi_miller_loop(&[
             (&pubkey_affine, &hashed_message_prepared),
-            (&neg_g1_generator_affine, &signature_prepared),
+            (&NEG_G1_GENERATOR_AFFINE, &signature_prepared),
         ]);
 
         miller_loop_result.final_exponentiation() == Gt::identity()
