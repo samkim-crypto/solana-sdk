@@ -10,8 +10,8 @@ use {
         signature::{AsSignatureProjective, SignatureProjective},
     },
     pairing::{MultiMillerLoop, MillerLoopResult},
-    blstrs::{pairing, G1Affine, G1Projective, Gt, G2Affine, G2Prepared, Bls12},
-    group::{prime::PrimeCurveAffine, Group},
+    blstrs::{G1Affine, G1Projective, Gt, G2Affine, G2Prepared, Bls12},
+    group::Group,
     std::sync::LazyLock,
 };
 use {
@@ -107,15 +107,27 @@ impl PubkeyProjective {
             (&pubkey_affine, &hashed_message_prepared),
             (&NEG_G1_GENERATOR_AFFINE, &signature_prepared),
         ]);
-
         miller_loop_result.final_exponentiation() == Gt::identity()
     }
 
     /// Verify a proof of possession against a public key
     pub(crate) fn _verify_proof_of_possession(&self, proof: &ProofOfPossessionProjective) -> bool {
-        let hashed_pubkey_bytes = hash_pubkey_to_g2(self);
-        pairing(&self.0.into(), &hashed_pubkey_bytes.into())
-            == pairing(&G1Affine::generator(), &proof.0.into())
+        // The verification equation is e(pubkey, H(pubkey)) == e(g1, proof).
+        // This is rewritten to e(pubkey, H(pubkey)) * e(-g1, proof) = 1 for batching.
+        let hashed_pubkey_affine: G2Affine = hash_pubkey_to_g2(self).into();
+        let proof_affine: G2Affine = proof.0.into();
+
+        let pubkey_affine: G1Affine = self.0.into();
+        let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey_affine);
+        let proof_prepared = G2Prepared::from(proof_affine);
+
+        let miller_loop_result = Bls12::multi_miller_loop(&[
+            (&pubkey_affine, &hashed_pubkey_prepared),
+            // Reuse the same pre-computed static value here for efficiency
+            (&NEG_G1_GENERATOR_AFFINE, &proof_prepared),
+        ]);
+
+        miller_loop_result.final_exponentiation() == Gt::identity()
     }
 
     /// Construct a corresponding `BlsPubkey` for a `BlsSecretKey`
