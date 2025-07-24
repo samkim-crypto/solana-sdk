@@ -33,9 +33,11 @@
 //!     original number of bits (i.e., the length of the input vectors).
 //! 3.  **Data Payload**: A sequence of bytes containing the packed base-3 digits.
 
-use bitvec::prelude::*;
-use num_derive::{FromPrimitive, ToPrimitive};
-use num_traits::FromPrimitive;
+use {
+    bitvec::prelude::*,
+    num_derive::{FromPrimitive, ToPrimitive},
+    num_traits::FromPrimitive,
+};
 
 /// Represents the encoding version, used as the first byte in the output.
 #[derive(Debug, PartialEq, Eq, FromPrimitive, ToPrimitive)]
