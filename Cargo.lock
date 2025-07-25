@@ -2907,6 +2907,7 @@ dependencies = [
  "group",
  "pairing",
  "rand 0.8.5",
+ "rayon",
  "serde",
  "serde_json",
  "serde_with",
