@@ -2905,7 +2905,6 @@ dependencies = [
  "criterion",
  "ff",
  "group",
- "once_cell",
  "pairing",
  "rand 0.8.5",
  "serde",

@@ -1,5 +1,7 @@
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
+#[cfg(all(not(target_os = "solana"), feature = "std"))]
+use std::sync::LazyLock;
 #[cfg(not(target_os = "solana"))]
 use {
     crate::{
@@ -11,7 +13,6 @@ use {
     },
     blstrs::{Bls12, G1Affine, G1Projective, G2Affine, G2Prepared, Gt},
     group::Group,
-    once_cell::sync::Lazy,
     pairing::{MillerLoopResult, MultiMillerLoop},
 };
 use {
@@ -36,8 +37,9 @@ pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 /// Size of a BLS public key in an affine point representation in base64
 pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
 
-#[cfg(not(target_os = "solana"))]
-static NEG_G1_GENERATOR_AFFINE: Lazy<G1Affine> = Lazy::new(|| (-G1Projective::generator()).into());
+#[cfg(all(not(target_os = "solana"), feature = "std"))]
+static NEG_G1_GENERATOR_AFFINE: LazyLock<G1Affine> =
+    LazyLock::new(|| (-G1Projective::generator()).into());
 
 /// A trait for types that can be converted into a `PubkeyProjective`.
 #[cfg(not(target_os = "solana"))]
@@ -102,9 +104,17 @@ impl PubkeyProjective {
         let hashed_message_prepared = G2Prepared::from(hashed_message);
         let signature_prepared = G2Prepared::from(signature_affine);
 
+        // use the static valud if `std` is available, otherwise compute it
+        #[cfg(feature = "std")]
+        let neg_g1_generator = &NEG_G1_GENERATOR_AFFINE;
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator_val: G1Affine = (-G1Projective::generator()).into();
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator = &neg_g1_generator_val;
+
         let miller_loop_result = Bls12::multi_miller_loop(&[
             (&pubkey_affine, &hashed_message_prepared),
-            (&NEG_G1_GENERATOR_AFFINE, &signature_prepared),
+            (neg_g1_generator, &signature_prepared),
         ]);
         miller_loop_result.final_exponentiation() == Gt::identity()
     }
@@ -120,10 +130,18 @@ impl PubkeyProjective {
         let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey_affine);
         let proof_prepared = G2Prepared::from(proof_affine);
 
+        // Use the static value if std is available, otherwise compute it
+        #[cfg(feature = "std")]
+        let neg_g1_generator = &NEG_G1_GENERATOR_AFFINE;
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator_val: G1Affine = (-G1Projective::generator()).into();
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator = &neg_g1_generator_val;
+
         let miller_loop_result = Bls12::multi_miller_loop(&[
             (&pubkey_affine, &hashed_pubkey_prepared),
             // Reuse the same pre-computed static value here for efficiency
-            (&NEG_G1_GENERATOR_AFFINE, &proof_prepared),
+            (neg_g1_generator, &proof_prepared),
         ]);
 
         miller_loop_result.final_exponentiation() == Gt::identity()
