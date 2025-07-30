@@ -400,7 +400,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "parallel"))]
     fn test_aggregate_verify_dyn() {
         let test_message = b"test message for dyn verify";
 

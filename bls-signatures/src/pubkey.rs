@@ -437,7 +437,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(not(feature = "parallel"))]
     fn test_pubkey_aggregate_dyn() {
         let keypair0 = Keypair::new();
         let keypair1 = Keypair::new();
