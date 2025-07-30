@@ -35,7 +35,7 @@ pub const BLS_SIGNATURE_AFFINE_BASE64_SIZE: usize = 256;
 
 /// A trait for types that can be converted into a `SignatureProjective`.
 #[cfg(not(target_os = "solana"))]
-pub trait AsSignatureProjective: Send + Sync {
+pub trait AsSignatureProjective {
     /// Attempt to convert the type into a `SignatureProjective`.
     fn try_as_projective(&self) -> Result<SignatureProjective, BlsError>;
 }
