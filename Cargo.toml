@@ -4,7 +4,6 @@ members = [
     "account-info",
     "address-lookup-table-interface",
     "atomic-u64",
-    "signer-store",
     "big-mod-exp",
     "bincode",
     "blake3-hasher",
@@ -86,6 +85,7 @@ members = [
     "shred-version",
     "signature",
     "signer",
+    "signer-store",
     "slot-hashes",
     "slot-history",
     "stable-layout",
@@ -208,7 +208,6 @@ solana-account = { path = "account", version = "2.2.1" }
 solana-account-info = { path = "account-info", version = "2.2.1" }
 solana-address-lookup-table-interface = { path = "address-lookup-table-interface", version = "2.2.2" }
 solana-atomic-u64 = { path = "atomic-u64", version = "2.2.1" }
-solana-signer-store = { path = "signer-store", version = "0.1.0" }
 solana-big-mod-exp = { path = "big-mod-exp", version = "2.2.1" }
 solana-bincode = { path = "bincode", version = "2.2.1" }
 solana-blake3-hasher = { path = "blake3-hasher", version = "2.2.1" }
@@ -290,6 +289,7 @@ solana-short-vec = { path = "short-vec", version = "2.2.1" }
 solana-shred-version = { path = "shred-version", version = "2.2.1" }
 solana-signature = { path = "signature", version = "2.3.0", default-features = false }
 solana-signer = { path = "signer", version = "2.2.1" }
+solana-signer-store = { path = "signer-store", version = "0.1.0" }
 solana-slot-hashes = { path = "slot-hashes", version = "2.2.1" }
 solana-slot-history = { path = "slot-history", version = "2.2.1" }
 solana-stable-layout = { path = "stable-layout", version = "2.2.1" }
