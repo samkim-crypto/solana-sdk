@@ -12,7 +12,8 @@
 //! The format is:
 //! 1.  **Version Byte (1 byte)**: `Version::Base2` as a `u8`.
 //! 2.  **Length Prefix (2 bytes)**: A `u16` in little-endian format storing the
-//!     number of bits in the vector.
+//!     original number of bits in the input vector (not length of the final
+//!     vector).
 //! 3.  **Data Payload**: The raw byte data of the boolean vector.
 //!
 //! ## Base3 Encoding (Two Vectors)
@@ -31,7 +32,8 @@
 //! The format is:
 //! 1.  **Version Byte (1 byte)**: `Version::Base3` as a `u8`.
 //! 2.  **Length Prefix (2 bytes)**: A `u16` in little-endian format storing the
-//!     original number of bits (i.e., the length of the input vectors).
+//!     original number of bits (i.e., the length of the input vectors; not the
+//!     length of the final vector).
 //! 3.  **Data Payload**: A sequence of bytes containing the packed base-3 digits.
 
 use {
