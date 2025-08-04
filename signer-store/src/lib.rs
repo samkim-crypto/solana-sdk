@@ -40,6 +40,10 @@ use {
     num_traits::FromPrimitive,
 };
 
+const VERSION_BYTE_LEN: usize = 1;
+const LENGTH_PREFIX_LEN: usize = 2;
+const HEADER_LEN: usize = VERSION_BYTE_LEN + LENGTH_PREFIX_LEN;
+
 /// Represents the encoding version, used as the first byte in the output.
 #[derive(Debug, PartialEq, Eq, FromPrimitive, ToPrimitive)]
 #[repr(u8)]
@@ -74,7 +78,7 @@ pub fn encode_base2(bit_vec: &BitVec<u8, Lsb0>) -> Result<Vec<u8>, EncodeError> 
     }
 
     let raw_slice = bit_vec.as_raw_slice();
-    let capacity = 3usize
+    let capacity = HEADER_LEN
         .checked_add(raw_slice.len())
         .ok_or(EncodeError::ArithmeticOverflow)?;
     let mut result = Vec::with_capacity(capacity);
@@ -106,7 +110,7 @@ pub fn encode_base3(
     let fallback_bytes = bit_vec_fallback.as_raw_slice();
 
     let num_chunks = num_bits.div_ceil(BASE3_SYMBOLS_PER_BYTE);
-    let capacity = 3usize
+    let capacity = HEADER_LEN
         .checked_add(num_chunks)
         .ok_or(EncodeError::ArithmeticOverflow)?;
     let mut result = Vec::with_capacity(capacity);
