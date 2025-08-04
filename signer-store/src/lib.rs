@@ -1,8 +1,9 @@
-//! Provides a space-efficient encoding scheme for one or two boolean vectors.
+//! Provides a space-efficient encoding scheme for one or two boolean vectors,
+//! primarily used to compactly encode the set of signers in an aggregate signature.
 //!
 //! This module implements compression algorithms to encode boolean vectors
-//! into a single byte vector (`Vec<u8>`). It supports two distinct schemes
-//! based on the number of input vectors.
+//! into a single byte vector (`Vec<u8>`). It currently supports two distinct
+//! schemes based on the number of input vectors.
 //!
 //! # Encoding Schemes
 //!

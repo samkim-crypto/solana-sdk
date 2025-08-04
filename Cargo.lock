@@ -2768,17 +2768,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "solana-base3-encoding"
-version = "0.1.0"
-dependencies = [
- "bitvec",
- "criterion",
- "num-derive",
- "num-traits",
- "rand 0.8.5",
-]
-
-[[package]]
 name = "solana-big-mod-exp"
 version = "2.2.1"
 dependencies = [
@@ -3909,6 +3898,17 @@ dependencies = [
  "solana-pubkey",
  "solana-signature",
  "solana-transaction-error",
+]
+
+[[package]]
+name = "solana-signer-store"
+version = "0.1.0"
+dependencies = [
+ "bitvec",
+ "criterion",
+ "num-derive",
+ "num-traits",
+ "rand 0.8.5",
 ]
 
 [[package]]

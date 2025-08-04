@@ -1,7 +1,7 @@
 [package]
-name = "solana-base3-encoding"
-description = "Solana Base3 Encoding"
-documentation = "https://docs.rs/solana-base3-encoding"
+name = "solana-signer-store"
+description = "Solana Signer Store"
+documentation = "https://docs.rs/solana-signer-store"
 version = "0.1.0"
 authors = { workspace = true }
 repository = { workspace = true }

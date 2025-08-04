@@ -4,7 +4,7 @@ members = [
     "account-info",
     "address-lookup-table-interface",
     "atomic-u64",
-    "base3-encoding",
+    "signer-store",
     "big-mod-exp",
     "bincode",
     "blake3-hasher",
@@ -208,7 +208,7 @@ solana-account = { path = "account", version = "2.2.1" }
 solana-account-info = { path = "account-info", version = "2.2.1" }
 solana-address-lookup-table-interface = { path = "address-lookup-table-interface", version = "2.2.2" }
 solana-atomic-u64 = { path = "atomic-u64", version = "2.2.1" }
-solana-base3-encoding = { path = "base3-encoding", version = "0.1.0" }
+solana-signer-store = { path = "signer-store", version = "0.1.0" }
 solana-big-mod-exp = { path = "big-mod-exp", version = "2.2.1" }
 solana-bincode = { path = "bincode", version = "2.2.1" }
 solana-blake3-hasher = { path = "blake3-hasher", version = "2.2.1" }
