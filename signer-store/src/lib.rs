@@ -58,16 +58,12 @@ pub enum Version {
 /// An error that can occur during the encoding process.
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum EncodeError {
-    /// In Base3 encoding, the provided bit-vectors have unmatching lengths.
     #[error("in Base3 encoding, the provided bit-vectors have unmatching lengths")]
     MismatchedLengths,
-    /// In Base3 encoding, the invalid combination `(true, true)` was found.
     #[error("in Base3 encoding, the invalid combination `(true, true)` was found")]
     InvalidBitCombination,
-    /// The length of the input vectors exceeds `u16::MAX` (65,535).
     #[error("the length of the input vectors exceeds u16::MAX (65,535)")]
     LengthExceedsLimit,
-    /// An arithmetic operation resulted in an overflow.
     #[error("an arithmetic operation resulted in an overflow")]
     ArithmeticOverflow,
 }
@@ -172,16 +168,12 @@ pub enum Decoded {
 /// An error that can occur during the decoding process.
 #[derive(Error, Debug, PartialEq, Eq)]
 pub enum DecodeError {
-    /// The input slice is too short to be valid.
     #[error("the input slice is too short to be valid")]
     InputTooShort,
-    /// The encoding version byte is unsupported.
     #[error("the encoding version byte is unsupported")]
     UnsupportedEncoding,
-    /// The data payload is not of the expected length.
     #[error("the data payload is not of the expected length")]
     CorruptDataPayload,
-    /// An arithmetic operation resulted in an overflow.
     #[error("an arithmetic operation resulted in an overflow")]
     ArithmeticOverflow,
 }
