@@ -13,6 +13,7 @@ edition = { workspace = true }
 bitvec = { workspace = true }
 num-derive = { workspace = true }
 num-traits = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 criterion = { workspace = true }
