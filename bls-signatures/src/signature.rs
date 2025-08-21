@@ -187,11 +187,7 @@ impl SignatureProjective {
             public_keys
                 .par_iter()
                 .zip(signatures.par_iter())
-                .map(|(pubkey, signature)| {
-                    let pubkey_projective = pubkey.try_as_projective()?;
-                    let signature_projective = signature.try_as_projective()?;
-                    Ok(pubkey_projective._verify_signature(&signature_projective, message))
-                })
+                .map(|(pubkey, signature)| Ok(pubkey._verify_signature(signature, message)))
                 .collect()
         }
     }
