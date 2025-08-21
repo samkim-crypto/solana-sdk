@@ -163,9 +163,9 @@ impl SignatureProjective {
     /// If it fails, it falls back to verifying each signature individually in parallel
     /// to identify the valid and invalid ones.
     #[cfg(feature = "parallel")]
-    pub fn par_verify_batch<P: AsPubkeyProjective + Sync, S: AsSignatureProjective + Sync>(
-        public_keys: &[&P],
-        signatures: &[&S],
+    pub fn par_verify_batch(
+        public_keys: &[&PubkeyProjective],
+        signatures: &[&SignatureProjective],
         message: &[u8],
     ) -> Result<Vec<bool>, BlsError> {
         if public_keys.len() != signatures.len() {
@@ -177,6 +177,9 @@ impl SignatureProjective {
         }
 
         // First, try to verify by aggregating all public keys and signatures.
+        //
+        // Note that `par_aggregate_verify` will not terminate early since all public keys and
+        // signatures are already in projective form
         if SignatureProjective::par_aggregate_verify(public_keys, signatures, message)? {
             Ok(alloc::vec![true; public_keys.len()])
         } else {
@@ -219,12 +222,9 @@ impl SignatureProjective {
     /// This function uses a highly optimized parallel binary search approach (divide and conquer)
     /// to efficiently identify invalid signatures in the batch (O(k log N) pairings).
     #[cfg(feature = "parallel")]
-    pub fn par_verify_batch_binary_search<
-        P: AsPubkeyProjective + Sync,
-        S: AsSignatureProjective + Sync,
-    >(
-        public_keys: &[&P],
-        signatures: &[&S],
+    pub fn par_verify_batch_binary_search(
+        public_keys: &[&PubkeyProjective],
+        signatures: &[&SignatureProjective],
         message: &[u8],
         options: &VerificationOptions,
     ) -> Result<Vec<bool>, BlsError> {
@@ -237,12 +237,7 @@ impl SignatureProjective {
         let inputs: Result<Vec<(PubkeyProjective, SignatureProjective)>, BlsError> = public_keys
             .par_iter()
             .zip(signatures.par_iter())
-            .map(|(pk, sig)| {
-                // If any conversion fails (e.g., invalid point encoding), the error propagates.
-                let pk_proj = pk.try_as_projective()?;
-                let sig_proj = sig.try_as_projective()?;
-                Ok((pk_proj, sig_proj))
-            })
+            .map(|(pk, sig)| Ok((**pk, **sig)))
             .collect();
 
         let inputs = inputs?;
