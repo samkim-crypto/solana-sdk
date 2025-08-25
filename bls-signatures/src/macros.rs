@@ -32,8 +32,7 @@ macro_rules! impl_from_str {
 /// * `$affine`: The identifier for the affine (uncompressed) representation struct (e.g., `Pubkey`).
 /// * `$compressed`: The identifier for the compressed representation struct (e.g., `PubkeyCompressed`).
 /// * `$point_type`: The underlying `blstrs` affine point type (e.g., `G1Affine` or `G2Affine`).
-/// * `$as_projective_trait`: The identifier for the custom projective conversion trait (e.g.,
-/// `AsPubkeyProjective`).
+/// * `$as_projective_trait`: The identifier for the custom projective conversion trait (e.g.,`AsPubkeyProjective`).
 /// * `$as_affine_trait`: The identifier for the custom affine conversion trait (e.g., `AsPubkey`).
 #[cfg(not(target_os = "solana"))]
 macro_rules! impl_bls_conversions {

@@ -163,7 +163,7 @@ mod tests {
         super::*,
         crate::{
             keypair::Keypair,
-            pubkey::{Pubkey, PubkeyCompressed},
+            pubkey::{Pubkey, PubkeyCompressed, PubkeyProjective},
         },
         core::str::FromStr,
         std::string::ToString,
@@ -174,8 +174,8 @@ mod tests {
         let keypair = Keypair::new();
         let proof_projective = keypair.proof_of_possession();
 
-        let pubkey_projective = keypair.public;
-        let pubkey_affine: Pubkey = pubkey_projective.into();
+        let pubkey_projective: PubkeyProjective = (&keypair.public).try_into().unwrap();
+        let pubkey_affine: Pubkey = keypair.public;
         let pubkey_compressed: PubkeyCompressed = pubkey_affine.try_into().unwrap();
 
         let proof_affine: ProofOfPossession = proof_projective.into();

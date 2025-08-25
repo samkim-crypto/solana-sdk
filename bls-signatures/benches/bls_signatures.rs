@@ -2,13 +2,19 @@ use {
     criterion::{criterion_group, criterion_main, Criterion},
     solana_bls_signatures::{
         keypair::Keypair,
-        pubkey::{Pubkey, PubkeyProjective, VerifiablePubkey},
-        signature::{Signature, SignatureProjective},
+        pubkey::{PubkeyProjective, VerifiablePubkey},
+        signature::SignatureProjective,
     },
     std::hint::black_box,
 };
 #[cfg(feature = "parallel")]
-use {solana_bls_signatures::signature::VerificationOptions, std::collections::HashSet};
+use {
+    solana_bls_signatures::{
+        pubkey::Pubkey,
+        signature::{Signature, VerificationOptions},
+    },
+    std::collections::HashSet,
+};
 
 // Benchmark for verifying a single signature
 fn bench_single_signature(c: &mut Criterion) {
@@ -250,11 +256,11 @@ fn bench_batch_verification(c: &mut Criterion) {
                         )
                         .unwrap(),
                     );
-                    for i in 0..*num_validators {
+                    for (i, &is_valid) in results.iter().enumerate() {
                         if invalid_indices.contains(&i) {
-                            assert!(!results[i]);
+                            assert!(!is_valid);
                         } else {
-                            assert!(results[i]);
+                            assert!(is_valid);
                         }
                     }
                 });
@@ -274,11 +280,11 @@ fn bench_batch_verification(c: &mut Criterion) {
                         )
                         .unwrap(),
                     );
-                    for i in 0..*num_validators {
+                    for (i, &is_valid) in results.iter().enumerate() {
                         if invalid_indices.contains(&i) {
-                            assert!(!results[i]);
+                            assert!(!is_valid);
                         } else {
-                            assert!(results[i]);
+                            assert!(is_valid);
                         }
                     }
                 });

@@ -553,8 +553,8 @@ mod tests {
         .unwrap());
 
         // verify with affine and compressed types
-        let pubkey0_affine: Pubkey = keypair0.public.into();
-        let pubkey1_affine: Pubkey = keypair1.public.into();
+        let pubkey0_affine: Pubkey = keypair0.public;
+        let pubkey1_affine: Pubkey = keypair1.public;
         let signature0_affine: Signature = signature0.into();
         let signature1_affine: Signature = signature1.into();
         assert!(SignatureProjective::aggregate_verify(
@@ -615,9 +615,8 @@ mod tests {
         let signature2_projective = keypair2.sign(test_message);
 
         let pubkey0 = PubkeyProjective::try_from(keypair0.public).unwrap(); // Projective
-        let pubkey1_affine: Pubkey = keypair1.public.into(); // Affine
-        let pubkey2_compressed: PubkeyCompressed =
-            Pubkey::from(keypair2.public).try_into().unwrap(); // Compressed
+        let pubkey1_affine: Pubkey = keypair1.public; // Affine
+        let pubkey2_compressed: PubkeyCompressed = keypair2.public.try_into().unwrap(); // Compressed
 
         let signature0 = signature0_projective; // Projective
         let signature1_affine: Signature = signature1_projective.into(); // Affine
@@ -739,8 +738,7 @@ mod tests {
         let pubkeys_affine: Vec<_> = keypairs.iter().map(|kp| kp.public).collect();
         let pubkeys: Vec<_> = pubkeys_affine.iter().collect();
         let signatures_proj: Vec<_> = keypairs.iter().map(|kp| kp.sign(message)).collect();
-        let signatures_affine: Vec<_> =
-            signatures_proj.iter().map(|s| Signature::from(s)).collect();
+        let signatures_affine: Vec<_> = signatures_proj.iter().map(Signature::from).collect();
         let sig_refs: Vec<_> = signatures_affine.iter().collect();
 
         // All signatures are valid
@@ -751,10 +749,8 @@ mod tests {
         let mut bad_signatures_proj = signatures_proj.clone();
         let bad_sig = keypairs[3].sign(b"a different message");
         bad_signatures_proj[3] = bad_sig;
-        let bad_signatures_affine: Vec<_> = bad_signatures_proj
-            .iter()
-            .map(|s| Signature::from(s))
-            .collect();
+        let bad_signatures_affine: Vec<_> =
+            bad_signatures_proj.iter().map(Signature::from).collect();
         let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
 
         let results =
@@ -788,8 +784,7 @@ mod tests {
         let pubkeys_affine: Vec<_> = keypairs.iter().map(|kp| kp.public).collect();
         let pubkeys: Vec<_> = pubkeys_affine.iter().collect();
         let signatures_proj: Vec<_> = keypairs.iter().map(|kp| kp.sign(message)).collect();
-        let signatures_affine: Vec<_> =
-            signatures_proj.iter().map(|s| Signature::from(s)).collect();
+        let signatures_affine: Vec<_> = signatures_proj.iter().map(Signature::from).collect();
         let sig_refs: Vec<_> = signatures_affine.iter().collect();
 
         // Create some invalid signatures for testing
@@ -816,10 +811,8 @@ mod tests {
         for options in [&options_small_thresh, &options_large_thresh] {
             let mut bad_signatures_proj = signatures_proj.clone();
             bad_signatures_proj[25] = invalid_sig_wrong_msg;
-            let bad_signatures_affine: Vec<_> = bad_signatures_proj
-                .iter()
-                .map(|s| Signature::from(s))
-                .collect();
+            let bad_signatures_affine: Vec<_> =
+                bad_signatures_proj.iter().map(Signature::from).collect();
             let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
 
             let results = SignatureProjective::par_verify_batch_binary_search(
@@ -840,10 +833,8 @@ mod tests {
             bad_signatures_proj[5] = invalid_sig_wrong_key;
             bad_signatures_proj[15] = invalid_sig_wrong_msg;
             bad_signatures_proj[45] = invalid_sig_wrong_key;
-            let bad_signatures_affine: Vec<_> = bad_signatures_proj
-                .iter()
-                .map(|s| Signature::from(s))
-                .collect();
+            let bad_signatures_affine: Vec<_> =
+                bad_signatures_proj.iter().map(Signature::from).collect();
             let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
 
             let results = SignatureProjective::par_verify_batch_binary_search(
@@ -864,10 +855,8 @@ mod tests {
         for options in [&options_small_thresh, &options_large_thresh] {
             let bad_signatures_proj: Vec<_> =
                 (0..NUM_SIGNATURES).map(|_| invalid_sig_wrong_msg).collect();
-            let bad_signatures_affine: Vec<_> = bad_signatures_proj
-                .iter()
-                .map(|s| Signature::from(s))
-                .collect();
+            let bad_signatures_affine: Vec<_> =
+                bad_signatures_proj.iter().map(Signature::from).collect();
             let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
 
             let results = SignatureProjective::par_verify_batch_binary_search(
