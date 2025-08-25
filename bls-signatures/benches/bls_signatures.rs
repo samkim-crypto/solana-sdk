@@ -2,8 +2,8 @@ use {
     criterion::{criterion_group, criterion_main, Criterion},
     solana_bls_signatures::{
         keypair::Keypair,
-        pubkey::{PubkeyProjective, VerifiablePubkey},
-        signature::SignatureProjective,
+        pubkey::{Pubkey, PubkeyProjective, VerifiablePubkey},
+        signature::{Signature, SignatureProjective},
     },
     std::hint::black_box,
 };
@@ -34,7 +34,10 @@ fn bench_aggregate(c: &mut Criterion) {
     for num_validators in [64, 128, 256, 512, 1024, 2048].iter() {
         let message = b"test message";
         let keypairs: Vec<Keypair> = (0..*num_validators).map(|_| Keypair::new()).collect();
-        let pubkeys: Vec<PubkeyProjective> = keypairs.iter().map(|kp| kp.public).collect();
+        let pubkeys: Vec<PubkeyProjective> = keypairs
+            .iter()
+            .map(|kp| PubkeyProjective::try_from(&kp.public).unwrap())
+            .collect();
         let signatures: Vec<SignatureProjective> =
             keypairs.iter().map(|kp| kp.sign(message)).collect();
 
@@ -138,13 +141,13 @@ fn bench_batch_verification(c: &mut Criterion) {
     for num_validators in [64, 128, 256, 512, 1024, 2048].iter() {
         let message = b"test_message";
         let keypairs: Vec<Keypair> = (0..*num_validators).map(|_| Keypair::new()).collect();
-        let pubkeys: Vec<PubkeyProjective> = keypairs.iter().map(|kp| kp.public).collect();
-        let pubkey_refs: Vec<&PubkeyProjective> = pubkeys.iter().collect();
+        let pubkeys: Vec<Pubkey> = keypairs.iter().map(|kp| kp.public).collect();
+        let pubkey_refs: Vec<&Pubkey> = pubkeys.iter().collect();
 
         // All signatures are valid
-        let signatures: Vec<SignatureProjective> =
-            keypairs.iter().map(|kp| kp.sign(message)).collect();
-        let signature_refs: Vec<&SignatureProjective> = signatures.iter().collect();
+        let signatures: Vec<Signature> =
+            keypairs.iter().map(|kp| kp.sign(message).into()).collect();
+        let signature_refs: Vec<&Signature> = signatures.iter().collect();
 
         group.bench_function(
             format!("{num_validators} par_verify_batch (all valid)"),
@@ -184,8 +187,9 @@ fn bench_batch_verification(c: &mut Criterion) {
         // --- Scenario 2: One signature is invalid ---
         let mut bad_signatures_one = signatures.clone();
         let invalid_sig_idx = num_validators / 2;
-        bad_signatures_one[invalid_sig_idx] = keypairs[invalid_sig_idx].sign(b"wrong message");
-        let bad_signature_refs_one: Vec<&SignatureProjective> = bad_signatures_one.iter().collect();
+        bad_signatures_one[invalid_sig_idx] =
+            keypairs[invalid_sig_idx].sign(b"wrong message").into();
+        let bad_signature_refs_one: Vec<&Signature> = bad_signatures_one.iter().collect();
 
         group.bench_function(
             format!("{num_validators} par_verify_batch (one invalid)"),
@@ -228,10 +232,10 @@ fn bench_batch_verification(c: &mut Criterion) {
         let mut invalid_indices = HashSet::new();
         for i in 0..num_invalid {
             let idx = i * 10;
-            bad_signatures_10_percent[idx] = keypairs[idx].sign(b"wrong message");
+            bad_signatures_10_percent[idx] = keypairs[idx].sign(b"wrong message").into();
             invalid_indices.insert(idx);
         }
-        let bad_signature_refs_10_percent: Vec<&SignatureProjective> =
+        let bad_signature_refs_10_percent: Vec<&Signature> =
             bad_signatures_10_percent.iter().collect();
 
         group.bench_function(

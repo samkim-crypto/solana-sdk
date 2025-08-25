@@ -39,6 +39,13 @@ pub trait AsProofOfPossessionProjective {
     fn try_as_projective(&self) -> Result<ProofOfPossessionProjective, BlsError>;
 }
 
+/// A trait for types that can be converted into a `ProofOfPossession` (affine).
+#[cfg(not(target_os = "solana"))]
+pub trait AsProofOfPossession {
+    /// Attempt to convert the type into a `ProofOfPossession`.
+    fn try_as_affine(&self) -> Result<ProofOfPossession, BlsError>;
+}
+
 /// A trait that provides verification methods to any convertible proof of possession type.
 #[cfg(not(target_os = "solana"))]
 pub trait VerifiableProofOfPossession: AsProofOfPossessionProjective {
@@ -63,7 +70,8 @@ impl_bls_conversions!(
     ProofOfPossession,
     ProofOfPossessionCompressed,
     G2Affine,
-    AsProofOfPossessionProjective
+    AsProofOfPossessionProjective,
+    AsProofOfPossession
 );
 
 /// A serialized BLS signature in a compressed point representation
