@@ -2,12 +2,12 @@ use crate::PodG1;
 pub use target_arch::*;
 
 pub(crate) mod consts {
+    use crate::LE_FLAG;
+
     /// Input length for the add operation.
     pub const ALT_BN128_ADDITION_INPUT_LEN: usize = 128;
     /// Output length for the add operation.
     pub const ALT_BN128_ADDITION_OUTPUT_LEN: usize = 64;
-
-    const LE_FLAG: u64 = 0x80;
 
     pub const ALT_BN128_ADD: u64 = 0;
     pub const ALT_BN128_SUB: u64 = 1;

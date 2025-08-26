@@ -7,12 +7,13 @@ pub mod prelude {
 use thiserror::Error;
 
 mod consts {
+    use crate::LE_FLAG;
+
     pub const ALT_BN128_G1_COMPRESS: u64 = 0;
     pub const ALT_BN128_G1_DECOMPRESS: u64 = 1;
     pub const ALT_BN128_G2_COMPRESS: u64 = 2;
     pub const ALT_BN128_G2_DECOMPRESS: u64 = 3;
 
-    const LE_FLAG: u64 = 0x80;
     pub const ALT_BN128_G1_COMPRESS_LE: u64 = ALT_BN128_G1_COMPRESS | LE_FLAG;
     pub const ALT_BN128_G1_DECOMPRESS_LE: u64 = ALT_BN128_G1_DECOMPRESS | LE_FLAG;
     pub const ALT_BN128_G2_COMPRESS_LE: u64 = ALT_BN128_G2_COMPRESS | LE_FLAG;

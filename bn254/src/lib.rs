@@ -74,6 +74,9 @@ impl From<AltBn128Error> for u64 {
 
 use consts::{ALT_BN128_FIELD_SIZE as FIELD_SIZE, ALT_BN128_POINT_SIZE as G1_POINT_SIZE};
 
+/// A bitmask used to indicate that an operation's input data is little-endian.
+pub(crate) const LE_FLAG: u64 = 0x80;
+
 /// The BN254 (BN128) group element in G1 as a POD type.
 ///
 /// A group element in G1 consists of two field elements `(x, y)`. A `PodG1`

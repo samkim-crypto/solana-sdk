@@ -2,12 +2,12 @@ use crate::{PodG1, PodG2};
 pub use target_arch::*;
 
 pub(crate) mod consts {
+    use crate::LE_FLAG;
+
     /// Pair element length.
     pub const ALT_BN128_PAIRING_ELEMENT_LEN: usize = 192;
     /// Output length for pairing operation.
     pub const ALT_BN128_PAIRING_OUTPUT_LEN: usize = 32;
-
-    const LE_FLAG: u64 = 0x80;
 
     pub const ALT_BN128_PAIRING: u64 = 3;
     pub const ALT_BN128_PAIRING_LE: u64 = ALT_BN128_PAIRING | LE_FLAG;
