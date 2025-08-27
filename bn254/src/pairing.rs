@@ -37,7 +37,7 @@ pub enum VersionedPairing {
 ///
 /// Developers should be extremely careful when modifying this function, as a breaking change
 /// can result in a fork in the Solana cluster. Any such change requires an
-/// approved Solana SIMD. Subsequently, a new `VersionedAddition` variant must be added,
+/// approved Solana SIMD. Subsequently, a new `VersionedPairing` variant must be added,
 /// and the new logic must be scoped to that variant.
 #[cfg(not(target_os = "solana"))]
 pub fn versioned_pairing(
