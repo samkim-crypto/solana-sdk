@@ -169,5 +169,4 @@ pub fn alt_bn128_multiplication_le(input: &[u8]) -> Result<Vec<u8>, AltBn128Erro
 #[inline(always)]
 pub fn alt_bn128_multiplication_128(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
     versioned_multiplication(VersionedMultiplication::V0, input, Endianness::BE)
-    // hard-code length; we will remove this function in the future
 }
