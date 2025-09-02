@@ -1,11 +1,9 @@
-#[cfg(feature = "parallel")]
-use solana_bls_signatures::{pubkey::Pubkey, signature::Signature};
 use {
     criterion::{criterion_group, criterion_main, Criterion},
     solana_bls_signatures::{
         keypair::Keypair,
-        pubkey::{PubkeyProjective, VerifiablePubkey},
-        signature::SignatureProjective,
+        pubkey::{Pubkey, PubkeyProjective, VerifiablePubkey},
+        signature::{Signature, SignatureProjective},
     },
     std::hint::black_box,
 };
@@ -141,7 +139,7 @@ fn bench_batch_verification(c: &mut Criterion) {
 
         // Create a unique message for each validator
         let messages: Vec<Vec<u8>> = (0..*num_validators)
-            .map(|i| format!("message_{}", i).into_bytes())
+            .map(|i| format!("message_{i}").into_bytes())
             .collect();
         let message_refs: Vec<&[u8]> = messages.iter().map(|m| m.as_slice()).collect();
 

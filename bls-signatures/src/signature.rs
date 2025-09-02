@@ -1,5 +1,7 @@
 #[cfg(all(not(target_os = "solana"), feature = "std"))]
 use crate::pubkey::NEG_G1_GENERATOR_AFFINE;
+#[cfg(not(feature = "std"))]
+use blstrs::G1Projective;
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 #[cfg(not(target_os = "solana"))]
@@ -155,6 +157,7 @@ impl SignatureProjective {
         #[cfg(not(feature = "std"))]
         let neg_g1_generator = &neg_g1_generator_val;
 
+        #[allow(clippy::arithmetic_side_effects)]
         let mut terms = alloc::vec::Vec::with_capacity(public_keys.len() + 1);
         for i in 0..public_keys.len() {
             terms.push((&pubkeys_affine[i], &prepared_hashes[i]));
@@ -239,6 +242,7 @@ impl SignatureProjective {
         // 1. Aggregate signatures.
         // 2. Deserialize public keys into curve points.
         // 3. Hash messages into curve points and prepare them for pairing.
+        #[allow(clippy::type_complexity)]
         let ((pubkeys_affine_res, prepared_hashes_res), aggregate_signature_res): (
             (Result<Vec<_>, _>, Result<Vec<_>, _>),
             Result<SignatureProjective, BlsError>,
