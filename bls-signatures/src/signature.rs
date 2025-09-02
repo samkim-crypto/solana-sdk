@@ -1,16 +1,20 @@
+#[cfg(all(not(target_os = "solana"), feature = "std"))]
+use crate::pubkey::NEG_G1_GENERATOR_AFFINE;
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
-#[cfg(all(feature = "parallel", not(target_os = "solana")))]
-use {crate::pubkey::Pubkey, alloc::vec::Vec, core::num::NonZeroUsize, rayon::prelude::*};
 #[cfg(not(target_os = "solana"))]
 use {
     crate::{
         error::BlsError,
-        pubkey::{AsPubkeyProjective, PubkeyProjective, VerifiablePubkey},
+        hash::hash_message_to_point,
+        pubkey::{AsPubkeyProjective, Pubkey, PubkeyProjective, VerifiablePubkey},
     },
-    blstrs::{G2Affine, G2Projective},
-    group::Group,
+    blstrs::{Bls12, G1Affine, G2Affine, G2Prepared, G2Projective, Gt},
+    group::{Curve, Group},
+    pairing::{MillerLoopResult, MultiMillerLoop},
 };
+#[cfg(all(feature = "parallel", not(target_os = "solana")))]
+use {alloc::vec::Vec, rayon::prelude::*};
 use {
     base64::{prelude::BASE64_STANDARD, Engine},
     core::fmt,
@@ -32,22 +36,6 @@ pub const BLS_SIGNATURE_AFFINE_SIZE: usize = 192;
 
 /// Size of a BLS signature in an affine point representation in base64
 pub const BLS_SIGNATURE_AFFINE_BASE64_SIZE: usize = 256;
-
-/// Options for configuring advanced verification functions
-#[cfg(all(feature = "parallel", not(target_os = "solana")))]
-pub struct VerificationOptions {
-    /// The number of signatures below which aggregation will be performed sequentially.
-    pub aggregation_threshold: NonZeroUsize,
-}
-
-#[cfg(all(feature = "parallel", not(target_os = "solana")))]
-impl Default for VerificationOptions {
-    fn default() -> Self {
-        Self {
-            aggregation_threshold: NonZeroUsize::new(1).unwrap(),
-        }
-    }
-}
 
 /// A trait for types that can be converted into a `SignatureProjective`.
 #[cfg(not(target_os = "solana"))]
@@ -127,6 +115,56 @@ impl SignatureProjective {
         aggregate_pubkey.verify_signature(&aggregate_signature, message)
     }
 
+    /// Verifies an aggregated signature over a set of distinct messages and
+    /// public keys.
+    pub fn batch_verify(
+        public_keys: &[&Pubkey],
+        signatures: &[&Signature],
+        messages: &[&[u8]],
+    ) -> Result<bool, BlsError> {
+        if public_keys.len() != messages.len() || public_keys.len() != signatures.len() {
+            return Err(BlsError::InputLengthMismatch);
+        }
+        if public_keys.is_empty() {
+            return Err(BlsError::EmptyAggregation);
+        }
+
+        let aggregate_signature = SignatureProjective::aggregate(signatures)?;
+
+        // TODO: remove `Vec` allocation if possible for efficiency
+        let mut pubkeys_affine = alloc::vec::Vec::with_capacity(public_keys.len());
+        for pubkey in public_keys {
+            let maybe_g1_affine: Option<_> = G1Affine::from_uncompressed(&pubkey.0).into();
+            let g1_affine: G1Affine = maybe_g1_affine.ok_or(BlsError::PointConversion)?;
+            pubkeys_affine.push(g1_affine);
+        }
+
+        let mut prepared_hashes = alloc::vec::Vec::with_capacity(messages.len());
+        for message in messages {
+            let hashed_message: G2Affine = hash_message_to_point(message).into();
+            prepared_hashes.push(G2Prepared::from(hashed_message));
+        }
+
+        let signature_affine = aggregate_signature.0.to_affine();
+        let signature_prepared = G2Prepared::from(signature_affine);
+
+        #[cfg(feature = "std")]
+        let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator_val: G1Affine = (-G1Projective::generator()).into();
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator = &neg_g1_generator_val;
+
+        let mut terms = alloc::vec::Vec::with_capacity(public_keys.len() + 1);
+        for i in 0..public_keys.len() {
+            terms.push((&pubkeys_affine[i], &prepared_hashes[i]));
+        }
+        terms.push((neg_g1_generator, &signature_prepared));
+
+        let miller_loop_result = Bls12::multi_miller_loop(&terms);
+        Ok(miller_loop_result.final_exponentiation() == Gt::identity())
+    }
+
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
@@ -163,43 +201,6 @@ impl SignatureProjective {
     }
 
     /// Verify a list of signatures against a message and a list of public keys
-    /// individually in parallel.
-    ///
-    /// This function first attempts to verify all signatures at once via aggregation.
-    /// If the aggregate verification succeeds, it returns a vector of `true`s.
-    /// If it fails, it falls back to verifying each signature individually in parallel
-    /// to identify the valid and invalid ones.
-    #[cfg(feature = "parallel")]
-    pub fn par_verify_batch(
-        public_keys: &[&Pubkey],
-        signatures: &[&Signature],
-        message: &[u8],
-    ) -> Result<Vec<bool>, BlsError> {
-        if public_keys.len() != signatures.len() {
-            return Err(BlsError::InputLengthMismatch);
-        }
-
-        if public_keys.is_empty() {
-            return Ok(Vec::new());
-        }
-
-        // First, try to verify by aggregating all public keys and signatures.
-        //
-        // Note that `par_aggregate_verify` will not terminate early since all public keys and
-        // signatures are already in projective form
-        if SignatureProjective::par_aggregate_verify(public_keys, signatures, message)? {
-            Ok(alloc::vec![true; public_keys.len()])
-        } else {
-            // Use Rayon's parallel iterator to verify each signature concurrently.
-            Ok(public_keys
-                .par_iter()
-                .zip(signatures.par_iter())
-                .map(|(pubkey, signature)| pubkey._verify_signature(signature, message))
-                .collect())
-        }
-    }
-
-    /// Verify a list of signatures against a message and a list of public keys
     #[cfg(feature = "parallel")]
     pub fn par_aggregate_verify<P: AsPubkeyProjective + Sync, S: AsSignatureProjective + Sync>(
         public_keys: &[&P],
@@ -219,142 +220,78 @@ impl SignatureProjective {
         aggregate_pubkey.verify_signature(&aggregate_signature, message)
     }
 
-    /// Verify a list of signatures against a message and a list of public keys,
-    /// identifying which signatures are valid.
-    ///
-    /// This function uses a highly optimized parallel binary search approach (divide and conquer)
-    /// to efficiently identify invalid signatures in the batch (O(k log N) pairings).
+    /// Verifies a set of signatures over a set of distinct messages and
+    /// public keys in parallel.
     #[cfg(feature = "parallel")]
-    pub fn par_verify_batch_binary_search(
+    pub fn par_batch_verify(
         public_keys: &[&Pubkey],
         signatures: &[&Signature],
-        message: &[u8],
-        options: &VerificationOptions,
-    ) -> Result<Vec<bool>, BlsError> {
-        if public_keys.len() != signatures.len() {
+        messages: &[&[u8]],
+    ) -> Result<bool, BlsError> {
+        if public_keys.len() != messages.len() || public_keys.len() != signatures.len() {
             return Err(BlsError::InputLengthMismatch);
         }
+        if public_keys.is_empty() {
+            return Err(BlsError::EmptyAggregation);
+        }
 
-        // Convert all inputs to the internal projective representation *once*
-        // to avoid repeated expensive conversions (e.g., decompression) during recursion.
-        let inputs: Result<Vec<(PubkeyProjective, SignatureProjective)>, BlsError> = public_keys
-            .par_iter()
-            .zip(signatures.par_iter())
-            .map(|(pk, sig)| {
-                let pk_proj = PubkeyProjective::try_from(*pk)?;
-                let sig_proj = SignatureProjective::try_from(*sig)?;
-                Ok((pk_proj, sig_proj))
-            })
-            .collect();
-
-        let inputs = inputs?;
-        let n = inputs.len();
-
-        // Initialize results to false (invalid until proven valid).
-        let mut results = alloc::vec![false; n];
-
-        // Recursive identification.
-        Self::recursive_identify(
-            &inputs,
-            message,
-            &mut results,
-            options.aggregation_threshold,
+        // Use `rayon` to perform the three expensive, independent tasks in parallel:
+        // 1. Aggregate signatures.
+        // 2. Deserialize public keys into curve points.
+        // 3. Hash messages into curve points and prepare them for pairing.
+        let ((pubkeys_affine_res, prepared_hashes_res), aggregate_signature_res): (
+            (Result<Vec<_>, _>, Result<Vec<_>, _>),
+            Result<SignatureProjective, BlsError>,
+        ) = rayon::join(
+            || {
+                rayon::join(
+                    || {
+                        public_keys
+                            .par_iter()
+                            .map(|pk| {
+                                let maybe_pubkey_affine: Option<_> =
+                                    G1Affine::from_uncompressed(&pk.0).into();
+                                maybe_pubkey_affine.ok_or(BlsError::PointConversion)
+                            })
+                            .collect()
+                    },
+                    || {
+                        messages
+                            .par_iter()
+                            .map(|msg| {
+                                let hashed_message: G2Affine = hash_message_to_point(msg).into();
+                                Ok::<_, BlsError>(G2Prepared::from(hashed_message))
+                            })
+                            .collect()
+                    },
+                )
+            },
+            || SignatureProjective::par_aggregate(signatures),
         );
 
-        Ok(results)
-    }
+        // Check for errors from the parallel operations and unwrap the results.
+        let aggregate_signature = aggregate_signature_res?;
+        let pubkeys_affine = pubkeys_affine_res?;
+        let prepared_hashes = prepared_hashes_res?;
 
-    /// Helper function to perform the parallelized binary search on pre-validated inputs.
-    #[cfg(feature = "parallel")]
-    #[allow(clippy::arithmetic_side_effects)]
-    fn recursive_identify(
-        inputs: &[(PubkeyProjective, SignatureProjective)],
-        message: &[u8],
-        results: &mut [bool],
-        aggregation_threshold: NonZeroUsize,
-    ) {
-        if inputs.is_empty() {
-            return;
+        let signature_affine = aggregate_signature.0.to_affine();
+        let signature_prepared = G2Prepared::from(signature_affine);
+
+        #[cfg(feature = "std")]
+        let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator_val: G1Affine = (-G1Projective::generator()).into();
+        #[cfg(not(feature = "std"))]
+        let neg_g1_generator = &neg_g1_generator_val;
+
+        let mut terms = alloc::vec::Vec::with_capacity(public_keys.len() + 1);
+        for i in 0..public_keys.len() {
+            terms.push((&pubkeys_affine[i], &prepared_hashes[i]));
         }
+        terms.push((neg_g1_generator, &signature_prepared));
 
-        // Aggregate the current batch.
-
-        // For small subsets, sequential aggregation is often faster due to Rayon overhead.
-        let (aggregate_pubkey, aggregate_signature) = if inputs.len() < aggregation_threshold.into()
-        {
-            // Sequential aggregation
-            inputs.iter().fold(
-                (
-                    PubkeyProjective::identity(),
-                    SignatureProjective::identity(),
-                ),
-                |(mut pk_acc, mut sig_acc), (pk, sig)| {
-                    pk_acc.0 += &pk.0;
-                    sig_acc.0 += &sig.0;
-                    (pk_acc, sig_acc)
-                },
-            )
-        } else {
-            // Parallel aggregation
-            inputs.par_iter().cloned().reduce(
-                || {
-                    (
-                        PubkeyProjective::identity(),
-                        SignatureProjective::identity(),
-                    )
-                },
-                |(mut pk_acc, mut sig_acc), (pk, sig)| {
-                    pk_acc.0 += &pk.0;
-                    sig_acc.0 += &sig.0;
-                    (pk_acc, sig_acc)
-                },
-            )
-        };
-
-        let is_valid = aggregate_pubkey
-            .verify_signature(&aggregate_signature, message)
-            .unwrap_or(false);
-
-        if is_valid {
-            // Success: Mark all in this batch as valid (in parallel).
-            results.par_iter_mut().for_each(|r| *r = true);
-        } else {
-            // Failure: Identify the culprit(s).
-
-            // Base case for recursion: if only one element remains and the aggregate failed,
-            // it must be the invalid one (it remains marked false).
-            if inputs.len() == 1 {
-                return;
-            }
-
-            // Binary search: split and recurse in parallel.
-            let mid = inputs.len() / 2;
-
-            let (left_inputs, right_inputs) = inputs.split_at(mid);
-            // Use split_at_mut to give exclusive mutable access to the corresponding results slice.
-            // This guarantees thread safety without locks or atomics.
-            let (left_results, right_results) = results.split_at_mut(mid);
-
-            // Use rayon::join to process both halves concurrently.
-            rayon::join(
-                || {
-                    Self::recursive_identify(
-                        left_inputs,
-                        message,
-                        left_results,
-                        aggregation_threshold,
-                    )
-                },
-                || {
-                    Self::recursive_identify(
-                        right_inputs,
-                        message,
-                        right_results,
-                        aggregation_threshold,
-                    )
-                },
-            );
-        }
+        let miller_loop_result = Bls12::multi_miller_loop(&terms);
+        Ok(miller_loop_result.final_exponentiation() == Gt::identity())
     }
 }
 
@@ -603,6 +540,97 @@ mod tests {
     }
 
     #[test]
+    fn test_batch_verify() {
+        let keypair0 = Keypair::new();
+        let keypair1 = Keypair::new();
+        let keypair2 = Keypair::new();
+
+        let message0 = b"message zero";
+        let message1 = b"message one";
+        let message2 = b"message two";
+
+        let signature0_proj = keypair0.sign(message0);
+        let signature1_proj = keypair1.sign(message1);
+        let signature2_proj = keypair2.sign(message2);
+
+        let signature0: Signature = signature0_proj.into();
+        let signature1: Signature = signature1_proj.into();
+        let signature2: Signature = signature2_proj.into();
+
+        // Success cases
+        let pubkeys_refs = [&keypair0.public, &keypair1.public, &keypair2.public];
+        let messages_refs_vec: Vec<&[u8]> = std::vec![message0, message1, message2];
+        let signatures_refs = [&signature0, &signature1, &signature2];
+
+        assert!(SignatureProjective::batch_verify(
+            &pubkeys_refs,
+            &signatures_refs,
+            &messages_refs_vec
+        )
+        .unwrap());
+
+        // Failure cases
+        let wrong_order_messages_refs: Vec<&[u8]> = std::vec![message1, message0, message2];
+        assert!(!SignatureProjective::batch_verify(
+            &pubkeys_refs,
+            &signatures_refs,
+            &wrong_order_messages_refs,
+        )
+        .unwrap());
+
+        let one_wrong_message_refs: Vec<&[u8]> = std::vec![message0, b"this is wrong", message2];
+        assert!(!SignatureProjective::batch_verify(
+            &pubkeys_refs,
+            &signatures_refs,
+            &one_wrong_message_refs
+        )
+        .unwrap());
+
+        let wrong_keypair = Keypair::new();
+        let wrong_pubkeys = [&keypair0.public, &wrong_keypair.public, &keypair2.public];
+        assert!(!SignatureProjective::batch_verify(
+            &wrong_pubkeys,
+            &signatures_refs,
+            &messages_refs_vec,
+        )
+        .unwrap());
+
+        let wrong_signature_proj = wrong_keypair.sign(message1);
+        let wrong_signature: Signature = wrong_signature_proj.into();
+        let wrong_signatures = [&signature0, &wrong_signature, &signature2];
+        assert!(!SignatureProjective::batch_verify(
+            &pubkeys_refs,
+            &wrong_signatures,
+            &messages_refs_vec,
+        )
+        .unwrap());
+
+        let err = SignatureProjective::batch_verify(
+            &pubkeys_refs,
+            &signatures_refs,
+            &messages_refs_vec[..2],
+        )
+        .unwrap_err();
+        assert_eq!(err, BlsError::InputLengthMismatch);
+
+        let err = SignatureProjective::batch_verify(
+            &pubkeys_refs,
+            &signatures_refs[..2],
+            &messages_refs_vec,
+        )
+        .unwrap_err();
+        assert_eq!(err, BlsError::InputLengthMismatch);
+
+        let err = SignatureProjective::batch_verify(
+            &[] as &[&Pubkey],
+            &[] as &[&Signature],
+            &[] as &[&[u8]],
+        )
+        .unwrap_err();
+        assert_eq!(err, BlsError::EmptyAggregation);
+    }
+
+    #[test]
     fn test_aggregate_verify_dyn() {
         let test_message = b"test message for dyn verify";
 
@@ -729,167 +757,29 @@ mod tests {
 
     #[test]
     #[cfg(feature = "parallel")]
-    fn test_par_verify_batch() {
-        const NUM_SIGNATURES: usize = 10;
-        let message = b"test message for par_verify_batch";
+    fn test_par_batch_verify() {
+        let keypair0 = Keypair::new();
+        let keypair1 = Keypair::new();
+        let keypair2 = Keypair::new();
 
-        // Generate keypairs, public keys, and signatures
-        let keypairs: Vec<_> = (0..NUM_SIGNATURES).map(|_| Keypair::new()).collect();
-        let pubkeys_affine: Vec<_> = keypairs.iter().map(|kp| kp.public).collect();
-        let pubkeys: Vec<_> = pubkeys_affine.iter().collect();
-        let signatures_proj: Vec<_> = keypairs.iter().map(|kp| kp.sign(message)).collect();
-        let signatures_affine: Vec<_> = signatures_proj.iter().map(Signature::from).collect();
-        let sig_refs: Vec<_> = signatures_affine.iter().collect();
+        let message0 = b"message zero";
+        let message1 = b"message one";
+        let message2 = b"message two";
 
-        // All signatures are valid
-        let results = SignatureProjective::par_verify_batch(&pubkeys, &sig_refs, message).unwrap();
-        assert_eq!(results, std::vec![true; NUM_SIGNATURES]);
+        let signature0_proj = keypair0.sign(message0);
+        let signature1_proj = keypair1.sign(message1);
+        let signature2_proj = keypair2.sign(message2);
 
-        // One signature is invalid (wrong message)
-        let mut bad_signatures_proj = signatures_proj.clone();
-        let bad_sig = keypairs[3].sign(b"a different message");
-        bad_signatures_proj[3] = bad_sig;
-        let bad_signatures_affine: Vec<_> =
-            bad_signatures_proj.iter().map(Signature::from).collect();
-        let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
+        let signature0: Signature = signature0_proj.into();
+        let signature1: Signature = signature1_proj.into();
+        let signature2: Signature = signature2_proj.into();
 
-        let results =
-            SignatureProjective::par_verify_batch(&pubkeys, &bad_sig_refs, message).unwrap();
-        let mut expected = std::vec![true; NUM_SIGNATURES];
-        expected[3] = false;
-        assert_eq!(results, expected);
+        let pubkeys = [&keypair0.public, &keypair1.public, &keypair2.public];
+        let messages_refs: Vec<&[u8]> = std::vec![message0, message1, message2];
+        let signatures = [&signature0, &signature1, &signature2];
 
-        // Input length mismatch
-        let short_pubkeys = &pubkeys[..NUM_SIGNATURES - 1];
-        let err =
-            SignatureProjective::par_verify_batch(short_pubkeys, &sig_refs, message).unwrap_err();
-        assert_eq!(err, BlsError::InputLengthMismatch);
-
-        // Empty inputs
-        let empty_pubkeys: &[&Pubkey] = &[];
-        let empty_sigs: &[&Signature] = &[];
-        let results =
-            SignatureProjective::par_verify_batch(empty_pubkeys, empty_sigs, message).unwrap();
-        assert!(results.is_empty());
-    }
-
-    #[test]
-    #[cfg(feature = "parallel")]
-    fn test_par_verify_batch_binary_search() {
-        const NUM_SIGNATURES: usize = 50;
-        let message = b"test message for binary search";
-
-        // Generate keypairs, public keys, and valid signatures
-        let keypairs: Vec<_> = (0..NUM_SIGNATURES).map(|_| Keypair::new()).collect();
-        let pubkeys_affine: Vec<_> = keypairs.iter().map(|kp| kp.public).collect();
-        let pubkeys: Vec<_> = pubkeys_affine.iter().collect();
-        let signatures_proj: Vec<_> = keypairs.iter().map(|kp| kp.sign(message)).collect();
-        let signatures_affine: Vec<_> = signatures_proj.iter().map(Signature::from).collect();
-        let sig_refs: Vec<_> = signatures_affine.iter().collect();
-
-        // Create some invalid signatures for testing
-        let invalid_sig_wrong_msg = keypairs[0].sign(b"wrong message");
-        let invalid_sig_wrong_key = Keypair::new().sign(message);
-
-        let options_small_thresh = VerificationOptions {
-            aggregation_threshold: std::num::NonZero::new(4).unwrap(), // Force parallel recursion
-        };
-        let options_large_thresh = VerificationOptions {
-            aggregation_threshold: std::num::NonZero::new(100).unwrap(), // Force sequential aggregation
-        };
-
-        // All signatures are valid
-        for options in [&options_small_thresh, &options_large_thresh] {
-            let results = SignatureProjective::par_verify_batch_binary_search(
-                &pubkeys, &sig_refs, message, options,
-            )
-            .unwrap();
-            assert_eq!(results, std::vec![true; NUM_SIGNATURES]);
-        }
-
-        // One signature is invalid
-        for options in [&options_small_thresh, &options_large_thresh] {
-            let mut bad_signatures_proj = signatures_proj.clone();
-            bad_signatures_proj[25] = invalid_sig_wrong_msg;
-            let bad_signatures_affine: Vec<_> =
-                bad_signatures_proj.iter().map(Signature::from).collect();
-            let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
-
-            let results = SignatureProjective::par_verify_batch_binary_search(
-                &pubkeys,
-                &bad_sig_refs,
-                message,
-                options,
-            )
-            .unwrap();
-            let mut expected = std::vec![true; NUM_SIGNATURES];
-            expected[25] = false;
-            assert_eq!(results, expected);
-        }
-
-        // Multiple signatures are invalid
-        for options in [&options_small_thresh, &options_large_thresh] {
-            let mut bad_signatures_proj = signatures_proj.clone();
-            bad_signatures_proj[5] = invalid_sig_wrong_key;
-            bad_signatures_proj[15] = invalid_sig_wrong_msg;
-            bad_signatures_proj[45] = invalid_sig_wrong_key;
-            let bad_signatures_affine: Vec<_> =
-                bad_signatures_proj.iter().map(Signature::from).collect();
-            let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
-
-            let results = SignatureProjective::par_verify_batch_binary_search(
-                &pubkeys,
-                &bad_sig_refs,
-                message,
-                options,
-            )
-            .unwrap();
-            let mut expected = std::vec![true; NUM_SIGNATURES];
-            expected[5] = false;
-            expected[15] = false;
-            expected[45] = false;
-            assert_eq!(results, expected);
-        }
-
-        // All signatures are invalid
-        for options in [&options_small_thresh, &options_large_thresh] {
-            let bad_signatures_proj: Vec<_> =
-                (0..NUM_SIGNATURES).map(|_| invalid_sig_wrong_msg).collect();
-            let bad_signatures_affine: Vec<_> =
-                bad_signatures_proj.iter().map(Signature::from).collect();
-            let bad_sig_refs: Vec<_> = bad_signatures_affine.iter().collect();
-
-            let results = SignatureProjective::par_verify_batch_binary_search(
-                &pubkeys,
-                &bad_sig_refs,
-                message,
-                options,
-            )
-            .unwrap();
-            assert_eq!(results, std::vec![false; NUM_SIGNATURES]);
-        }
-
-        // Input length mismatch
-        let short_pubkeys = &pubkeys[..NUM_SIGNATURES - 1];
-        let err = SignatureProjective::par_verify_batch_binary_search(
-            short_pubkeys,
-            &sig_refs,
-            message,
-            &options_small_thresh,
-        )
-        .unwrap_err();
-        assert_eq!(err, BlsError::InputLengthMismatch);
-
-        // Empty inputs
-        let empty_pubkeys: &[&Pubkey] = &[];
-        let empty_sigs: &[&Signature] = &[];
-        let results = SignatureProjective::par_verify_batch_binary_search(
-            empty_pubkeys,
-            empty_sigs,
-            message,
-            &options_small_thresh,
-        )
-        .unwrap();
-        assert!(results.is_empty());
+        assert!(
+            SignatureProjective::par_batch_verify(&pubkeys, &signatures, &messages_refs,).unwrap()
+        );
     }
 }

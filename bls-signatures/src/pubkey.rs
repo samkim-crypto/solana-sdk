@@ -40,7 +40,7 @@ pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
 
 #[cfg(all(not(target_os = "solana"), feature = "std"))]
-static NEG_G1_GENERATOR_AFFINE: LazyLock<G1Affine> =
+pub(crate) static NEG_G1_GENERATOR_AFFINE: LazyLock<G1Affine> =
     LazyLock::new(|| (-G1Projective::generator()).into());
 
 /// A trait for types that can be converted into a `PubkeyProjective`.
