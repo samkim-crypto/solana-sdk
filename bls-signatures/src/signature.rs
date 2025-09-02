@@ -12,7 +12,7 @@ use {
         pubkey::{AsPubkeyProjective, Pubkey, PubkeyProjective, VerifiablePubkey},
     },
     blstrs::{Bls12, G1Affine, G2Affine, G2Prepared, G2Projective, Gt},
-    group::{Curve, Group},
+    group::Group,
     pairing::{MillerLoopResult, MultiMillerLoop},
 };
 #[cfg(all(feature = "parallel", not(target_os = "solana")))]
@@ -130,8 +130,23 @@ impl SignatureProjective {
         if public_keys.is_empty() {
             return Err(BlsError::EmptyAggregation);
         }
-
         let aggregate_signature = SignatureProjective::aggregate(signatures)?;
+        Self::batch_verify_aggregated(public_keys, &aggregate_signature.into(), messages)
+    }
+
+    /// Verifies a pre-aggregated signature over a set of distinct messages and
+    /// public keys.
+    pub fn batch_verify_aggregated(
+        public_keys: &[&Pubkey],
+        aggregate_signature: &Signature,
+        messages: &[&[u8]],
+    ) -> Result<bool, BlsError> {
+        if public_keys.len() != messages.len() {
+            return Err(BlsError::InputLengthMismatch);
+        }
+        if public_keys.is_empty() {
+            return Err(BlsError::EmptyAggregation);
+        }
 
         // TODO: remove `Vec` allocation if possible for efficiency
         let mut pubkeys_affine = alloc::vec::Vec::with_capacity(public_keys.len());
@@ -147,8 +162,11 @@ impl SignatureProjective {
             prepared_hashes.push(G2Prepared::from(hashed_message));
         }
 
-        let signature_affine = aggregate_signature.0.to_affine();
-        let signature_prepared = G2Prepared::from(signature_affine);
+        let maybe_aggregate_signature_affine: Option<G2Affine> =
+            G2Affine::from_uncompressed(&aggregate_signature.0).into();
+        let aggregate_signature_affine =
+            maybe_aggregate_signature_affine.ok_or(BlsError::PointConversion)?;
+        let signature_prepared = G2Prepared::from(aggregate_signature_affine);
 
         #[cfg(feature = "std")]
         let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
@@ -237,49 +255,60 @@ impl SignatureProjective {
         if public_keys.is_empty() {
             return Err(BlsError::EmptyAggregation);
         }
+        let aggregate_signature = SignatureProjective::par_aggregate(signatures)?;
+        Self::par_batch_verify_aggregated(public_keys, &aggregate_signature.into(), messages)
+    }
+
+    /// In parallel, verifies a pre-aggregated signature over a set of distinct
+    /// messages and public keys.
+    #[cfg(feature = "parallel")]
+    pub fn par_batch_verify_aggregated(
+        public_keys: &[&Pubkey],
+        aggregate_signature: &Signature,
+        messages: &[&[u8]],
+    ) -> Result<bool, BlsError> {
+        if public_keys.len() != messages.len() {
+            return Err(BlsError::InputLengthMismatch);
+        }
+        if public_keys.is_empty() {
+            return Err(BlsError::EmptyAggregation);
+        }
 
         // Use `rayon` to perform the three expensive, independent tasks in parallel:
-        // 1. Aggregate signatures.
-        // 2. Deserialize public keys into curve points.
-        // 3. Hash messages into curve points and prepare them for pairing.
-        #[allow(clippy::type_complexity)]
-        let ((pubkeys_affine_res, prepared_hashes_res), aggregate_signature_res): (
-            (Result<Vec<_>, _>, Result<Vec<_>, _>),
-            Result<SignatureProjective, BlsError>,
-        ) = rayon::join(
-            || {
-                rayon::join(
-                    || {
-                        public_keys
-                            .par_iter()
-                            .map(|pk| {
-                                let maybe_pubkey_affine: Option<_> =
-                                    G1Affine::from_uncompressed(&pk.0).into();
-                                maybe_pubkey_affine.ok_or(BlsError::PointConversion)
-                            })
-                            .collect()
-                    },
-                    || {
-                        messages
-                            .par_iter()
-                            .map(|msg| {
-                                let hashed_message: G2Affine = hash_message_to_point(msg).into();
-                                Ok::<_, BlsError>(G2Prepared::from(hashed_message))
-                            })
-                            .collect()
-                    },
-                )
-            },
-            || SignatureProjective::par_aggregate(signatures),
-        );
+        // 1. Deserialize public keys into curve points.
+        // 2. Hash messages into curve points and prepare them for pairing.
+        let (pubkeys_affine_res, prepared_hashes_res): (Result<Vec<_>, _>, Result<Vec<_>, _>) =
+            rayon::join(
+                || {
+                    public_keys
+                        .par_iter()
+                        .map(|pk| {
+                            let maybe_pubkey_affine: Option<_> =
+                                G1Affine::from_uncompressed(&pk.0).into();
+                            maybe_pubkey_affine.ok_or(BlsError::PointConversion)
+                        })
+                        .collect()
+                },
+                || {
+                    messages
+                        .par_iter()
+                        .map(|msg| {
+                            let hashed_message: G2Affine = hash_message_to_point(msg).into();
+                            Ok::<_, BlsError>(G2Prepared::from(hashed_message))
+                        })
+                        .collect()
+                },
+            );
 
         // Check for errors from the parallel operations and unwrap the results.
-        let aggregate_signature = aggregate_signature_res?;
         let pubkeys_affine = pubkeys_affine_res?;
         let prepared_hashes = prepared_hashes_res?;
 
-        let signature_affine = aggregate_signature.0.to_affine();
-        let signature_prepared = G2Prepared::from(signature_affine);
+        let maybe_aggregate_signature_affine: Option<G2Affine> =
+            G2Affine::from_uncompressed(&aggregate_signature.0).into();
+        let aggregate_signature_affine =
+            maybe_aggregate_signature_affine.ok_or(BlsError::PointConversion)?;
+        let signature_prepared = G2Prepared::from(aggregate_signature_affine);
 
         #[cfg(feature = "std")]
         let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
