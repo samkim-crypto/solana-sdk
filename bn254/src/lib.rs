@@ -9,17 +9,18 @@ pub(crate) mod pairing;
 pub mod versioned {
     pub use crate::{
         addition::{
-            versioned_addition, VersionedAddition, ALT_BN128_ADD, ALT_BN128_ADDITION_INPUT_LEN,
-            ALT_BN128_ADDITION_OUTPUT_LEN, ALT_BN128_ADD_LE, ALT_BN128_SUB, ALT_BN128_SUB_LE,
+            alt_bn128_versioned_g1_addition, VersionedG1Addition, ALT_BN128_ADD,
+            ALT_BN128_ADDITION_INPUT_LEN, ALT_BN128_ADDITION_OUTPUT_LEN, ALT_BN128_ADD_LE,
+            ALT_BN128_SUB, ALT_BN128_SUB_LE,
         },
         multiplication::{
-            versioned_multiplication, VersionedMultiplication, ALT_BN128_MUL,
+            alt_bn128_versioned_g1_multiplication, VersionedG1Multiplication, ALT_BN128_MUL,
             ALT_BN128_MULTIPLICATION_INPUT_LEN, ALT_BN128_MULTIPLICATION_OUTPUT_LEN,
             ALT_BN128_MUL_LE,
         },
         pairing::{
-            versioned_pairing, VersionedPairing, ALT_BN128_PAIRING, ALT_BN128_PAIRING_ELEMENT_LEN,
-            ALT_BN128_PAIRING_LE, ALT_BN128_PAIRING_OUTPUT_LEN,
+            alt_bn128_versioned_pairing, VersionedPairing, ALT_BN128_PAIRING,
+            ALT_BN128_PAIRING_ELEMENT_LEN, ALT_BN128_PAIRING_LE, ALT_BN128_PAIRING_OUTPUT_LEN,
         },
         target_arch::Endianness,
     };

@@ -40,7 +40,7 @@ pub enum VersionedPairing {
 /// approved Solana SIMD. Subsequently, a new `VersionedPairing` variant must be added,
 /// and the new logic must be scoped to that variant.
 #[cfg(not(target_os = "solana"))]
-pub fn versioned_pairing(
+pub fn alt_bn128_versioned_pairing(
     _version: VersionedPairing,
     input: &[u8],
     endianness: Endianness,
@@ -92,7 +92,7 @@ pub fn versioned_pairing(
 pub fn alt_bn128_pairing(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
     #[cfg(not(target_os = "solana"))]
     {
-        versioned_pairing(VersionedPairing::V0, input, Endianness::BE)
+        alt_bn128_versioned_pairing(VersionedPairing::V0, input, Endianness::BE)
     }
     #[cfg(target_os = "solana")]
     {
@@ -124,7 +124,7 @@ pub fn alt_bn128_pairing(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
 pub fn alt_bn128_pairing_le(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
     #[cfg(not(target_os = "solana"))]
     {
-        versioned_pairing(VersionedPairing::V0, input, Endianness::LE)
+        alt_bn128_versioned_pairing(VersionedPairing::V0, input, Endianness::LE)
     }
     #[cfg(target_os = "solana")]
     {

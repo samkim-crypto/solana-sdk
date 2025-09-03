@@ -22,7 +22,7 @@ pub const ALT_BN128_SUB_LE: u64 = ALT_BN128_SUB | LE_FLAG;
 
 /// The version enum used to version changes to the `alt_bn128_addition` syscall.
 #[cfg(not(target_os = "solana"))]
-pub enum VersionedAddition {
+pub enum VersionedG1Addition {
     V0,
 }
 
@@ -39,8 +39,8 @@ pub enum VersionedAddition {
 /// approved Solana SIMD. Subsequently, a new `VersionedAddition` variant must be added,
 /// and the new logic must be scoped to that variant.
 #[cfg(not(target_os = "solana"))]
-pub fn versioned_addition(
-    _version: VersionedAddition,
+pub fn alt_bn128_versioned_g1_addition(
+    _version: VersionedG1Addition,
     input: &[u8],
     endianness: Endianness,
 ) -> Result<Vec<u8>, AltBn128Error> {
@@ -97,7 +97,7 @@ pub fn versioned_addition(
 pub fn alt_bn128_addition(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
     #[cfg(not(target_os = "solana"))]
     {
-        versioned_addition(VersionedAddition::V0, input, Endianness::BE)
+        alt_bn128_versioned_g1_addition(VersionedG1Addition::V0, input, Endianness::BE)
     }
     #[cfg(target_os = "solana")]
     {
@@ -125,7 +125,7 @@ pub fn alt_bn128_addition(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
 pub fn alt_bn128_addition_le(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
     #[cfg(not(target_os = "solana"))]
     {
-        versioned_addition(VersionedAddition::V0, input, Endianness::LE)
+        alt_bn128_versioned_g1_addition(VersionedG1Addition::V0, input, Endianness::LE)
     }
     #[cfg(target_os = "solana")]
     {

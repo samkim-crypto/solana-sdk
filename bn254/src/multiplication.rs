@@ -22,7 +22,7 @@ pub const ALT_BN128_MUL_LE: u64 = ALT_BN128_MUL | LE_FLAG;
 
 /// The version enum used to version changes to the `alt_bn128_multiplication` syscall.
 #[cfg(not(target_os = "solana"))]
-pub enum VersionedMultiplication {
+pub enum VersionedG1Multiplication {
     V0,
     /// SIMD-0222 - Fix alt-bn128-multiplication Syscall Length Check
     V1,
@@ -41,14 +41,14 @@ pub enum VersionedMultiplication {
 /// approved Solana SIMD. Subsequently, a new `VersionedMultiplication` variant must be added,
 /// and the new logic must be scoped to that variant.
 #[cfg(not(target_os = "solana"))]
-pub fn versioned_multiplication(
-    version: VersionedMultiplication,
+pub fn alt_bn128_versioned_g1_multiplication(
+    version: VersionedG1Multiplication,
     input: &[u8],
     endianness: Endianness,
 ) -> Result<Vec<u8>, AltBn128Error> {
     let expected_length = match version {
-        VersionedMultiplication::V0 => 128,
-        VersionedMultiplication::V1 => ALT_BN128_MULTIPLICATION_INPUT_LEN,
+        VersionedG1Multiplication::V0 => 128,
+        VersionedG1Multiplication::V1 => ALT_BN128_MULTIPLICATION_INPUT_LEN,
     };
 
     match endianness {
@@ -109,7 +109,7 @@ pub fn versioned_multiplication(
 pub fn alt_bn128_multiplication(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
     #[cfg(not(target_os = "solana"))]
     {
-        versioned_multiplication(VersionedMultiplication::V1, input, Endianness::BE)
+        alt_bn128_versioned_g1_multiplication(VersionedG1Multiplication::V1, input, Endianness::BE)
     }
     #[cfg(target_os = "solana")]
     {
@@ -137,7 +137,7 @@ pub fn alt_bn128_multiplication(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> 
 pub fn alt_bn128_multiplication_le(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
     #[cfg(not(target_os = "solana"))]
     {
-        versioned_multiplication(VersionedMultiplication::V1, input, Endianness::LE)
+        alt_bn128_versioned_g1_multiplication(VersionedG1Multiplication::V1, input, Endianness::LE)
     }
     #[cfg(target_os = "solana")]
     {
@@ -168,5 +168,5 @@ pub fn alt_bn128_multiplication_le(input: &[u8]) -> Result<Vec<u8>, AltBn128Erro
 #[cfg(not(target_os = "solana"))]
 #[inline(always)]
 pub fn alt_bn128_multiplication_128(input: &[u8]) -> Result<Vec<u8>, AltBn128Error> {
-    versioned_multiplication(VersionedMultiplication::V0, input, Endianness::BE)
+    alt_bn128_versioned_g1_multiplication(VersionedG1Multiplication::V0, input, Endianness::BE)
 }
