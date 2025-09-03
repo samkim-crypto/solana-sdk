@@ -6,7 +6,7 @@ pub(crate) mod pairing;
 /// This module contains the versioned syscall implementations and is intended for use
 /// primarily by validator code.
 #[cfg(not(target_os = "solana"))]
-pub mod validator {
+pub mod versioned {
     pub use crate::{
         addition::{
             versioned_addition, VersionedAddition, ALT_BN128_ADD, ALT_BN128_ADDITION_INPUT_LEN,
