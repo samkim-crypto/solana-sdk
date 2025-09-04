@@ -106,7 +106,7 @@ impl SignatureProjective {
     }
 
     /// Verify a list of signatures against a message and a list of public keys
-    pub fn aggregate_verify<P: AsPubkeyProjective + ?Sized, S: AsSignatureProjective + ?Sized>(
+    pub fn verify_aggregate<P: AsPubkeyProjective + ?Sized, S: AsSignatureProjective + ?Sized>(
         public_keys: &[&P],
         signatures: &[&S],
         message: &[u8],
@@ -119,7 +119,7 @@ impl SignatureProjective {
 
     /// Verifies an aggregated signature over a set of distinct messages and
     /// public keys.
-    pub fn batch_verify(
+    pub fn verify_distinct(
         public_keys: &[&Pubkey],
         signatures: &[&Signature],
         messages: &[&[u8]],
@@ -131,12 +131,12 @@ impl SignatureProjective {
             return Err(BlsError::EmptyAggregation);
         }
         let aggregate_signature = SignatureProjective::aggregate(signatures)?;
-        Self::batch_verify_aggregated(public_keys, &aggregate_signature.into(), messages)
+        Self::verify_distinct_aggregated(public_keys, &aggregate_signature.into(), messages)
     }
 
     /// Verifies a pre-aggregated signature over a set of distinct messages and
     /// public keys.
-    pub fn batch_verify_aggregated(
+    pub fn verify_distinct_aggregated(
         public_keys: &[&Pubkey],
         aggregate_signature: &Signature,
         messages: &[&[u8]],
@@ -223,7 +223,7 @@ impl SignatureProjective {
 
     /// Verify a list of signatures against a message and a list of public keys
     #[cfg(feature = "parallel")]
-    pub fn par_aggregate_verify<P: AsPubkeyProjective + Sync, S: AsSignatureProjective + Sync>(
+    pub fn par_verify_aggregate<P: AsPubkeyProjective + Sync, S: AsSignatureProjective + Sync>(
         public_keys: &[&P],
         signatures: &[&S],
         message: &[u8],
@@ -244,7 +244,7 @@ impl SignatureProjective {
     /// Verifies a set of signatures over a set of distinct messages and
     /// public keys in parallel.
     #[cfg(feature = "parallel")]
-    pub fn par_batch_verify(
+    pub fn par_verify_distinct(
         public_keys: &[&Pubkey],
         signatures: &[&Signature],
         messages: &[&[u8]],
@@ -256,13 +256,13 @@ impl SignatureProjective {
             return Err(BlsError::EmptyAggregation);
         }
         let aggregate_signature = SignatureProjective::par_aggregate(signatures)?;
-        Self::par_batch_verify_aggregated(public_keys, &aggregate_signature.into(), messages)
+        Self::par_verify_distinct_aggregated(public_keys, &aggregate_signature.into(), messages)
     }
 
     /// In parallel, verifies a pre-aggregated signature over a set of distinct
     /// messages and public keys.
     #[cfg(feature = "parallel")]
-    pub fn par_batch_verify_aggregated(
+    pub fn par_verify_distinct_aggregated(
         public_keys: &[&Pubkey],
         aggregate_signature: &Signature,
         messages: &[&[u8]],
@@ -497,7 +497,7 @@ mod tests {
     }
 
     #[test]
-    fn test_aggregate_verify() {
+    fn test_verify_aggregate() {
         let test_message = b"test message";
 
         let keypair0 = Keypair::new();
@@ -515,7 +515,7 @@ mod tests {
             .unwrap());
 
         // basic case
-        assert!(SignatureProjective::aggregate_verify(
+        assert!(SignatureProjective::verify_aggregate(
             &[&keypair0.public, &keypair1.public],
             &[&signature0, &signature1],
             test_message,
@@ -527,7 +527,7 @@ mod tests {
         let pubkey1_affine: Pubkey = keypair1.public;
         let signature0_affine: Signature = signature0.into();
         let signature1_affine: Signature = signature1.into();
-        assert!(SignatureProjective::aggregate_verify(
+        assert!(SignatureProjective::verify_aggregate(
             &[&pubkey0_affine, &pubkey1_affine],
             &[&signature0_affine, &signature1_affine],
             test_message,
@@ -537,7 +537,7 @@ mod tests {
         // pre-aggregate the signatures
         let aggregate_signature =
             SignatureProjective::aggregate(&[&signature0, &signature1]).unwrap();
-        assert!(SignatureProjective::aggregate_verify(
+        assert!(SignatureProjective::verify_aggregate(
             &[&keypair0.public, &keypair1.public],
             &[&aggregate_signature],
             test_message,
@@ -547,7 +547,7 @@ mod tests {
         // pre-aggregate the public keys
         let aggregate_pubkey =
             PubkeyProjective::aggregate(&[&keypair0.public, &keypair1.public]).unwrap();
-        assert!(SignatureProjective::aggregate_verify(
+        assert!(SignatureProjective::verify_aggregate(
             &[&aggregate_pubkey],
             &[&signature0, &signature1],
             test_message,
@@ -555,7 +555,7 @@ mod tests {
         .unwrap());
 
         // empty set of public keys or signatures
-        let err = SignatureProjective::aggregate_verify(
+        let err = SignatureProjective::verify_aggregate(
             &[] as &[&PubkeyProjective],
             &[&signature0, &signature1],
             test_message,
@@ -563,7 +563,7 @@ mod tests {
         .unwrap_err();
         assert_eq!(err, BlsError::EmptyAggregation);
 
-        let err = SignatureProjective::aggregate_verify(
+        let err = SignatureProjective::verify_aggregate(
             &[&keypair0.public, &keypair1.public],
             &[] as &[&SignatureProjective],
             test_message,
@@ -573,7 +573,7 @@ mod tests {
     }
 
     #[test]
-    fn test_batch_verify() {
+    fn test_verify_distinct() {
         let keypair0 = Keypair::new();
         let keypair1 = Keypair::new();
         let keypair2 = Keypair::new();
@@ -595,7 +595,7 @@ mod tests {
         let messages_refs_vec: Vec<&[u8]> = std::vec![message0, message1, message2];
         let signatures_refs = [&signature0, &signature1, &signature2];
 
-        assert!(SignatureProjective::batch_verify(
+        assert!(SignatureProjective::verify_distinct(
             &pubkeys_refs,
             &signatures_refs,
             &messages_refs_vec
@@ -604,7 +604,7 @@ mod tests {
 
         // Failure cases
         let wrong_order_messages_refs: Vec<&[u8]> = std::vec![message1, message0, message2];
-        assert!(!SignatureProjective::batch_verify(
+        assert!(!SignatureProjective::verify_distinct(
             &pubkeys_refs,
             &signatures_refs,
             &wrong_order_messages_refs,
@@ -612,7 +612,7 @@ mod tests {
         .unwrap());
 
         let one_wrong_message_refs: Vec<&[u8]> = std::vec![message0, b"this is wrong", message2];
-        assert!(!SignatureProjective::batch_verify(
+        assert!(!SignatureProjective::verify_distinct(
             &pubkeys_refs,
             &signatures_refs,
             &one_wrong_message_refs
@@ -621,7 +621,7 @@ mod tests {
 
         let wrong_keypair = Keypair::new();
         let wrong_pubkeys = [&keypair0.public, &wrong_keypair.public, &keypair2.public];
-        assert!(!SignatureProjective::batch_verify(
+        assert!(!SignatureProjective::verify_distinct(
             &wrong_pubkeys,
             &signatures_refs,
             &messages_refs_vec,
@@ -631,14 +631,14 @@ mod tests {
         let wrong_signature_proj = wrong_keypair.sign(message1);
         let wrong_signature: Signature = wrong_signature_proj.into();
         let wrong_signatures = [&signature0, &wrong_signature, &signature2];
-        assert!(!SignatureProjective::batch_verify(
+        assert!(!SignatureProjective::verify_distinct(
             &pubkeys_refs,
             &wrong_signatures,
             &messages_refs_vec,
         )
         .unwrap());
 
-        let err = SignatureProjective::batch_verify(
+        let err = SignatureProjective::verify_distinct(
             &pubkeys_refs,
             &signatures_refs,
             &messages_refs_vec[..2],
@@ -646,7 +646,7 @@ mod tests {
         .unwrap_err();
         assert_eq!(err, BlsError::InputLengthMismatch);
 
-        let err = SignatureProjective::batch_verify(
+        let err = SignatureProjective::verify_distinct(
             &pubkeys_refs,
             &signatures_refs[..2],
             &messages_refs_vec,
@@ -654,7 +654,7 @@ mod tests {
         .unwrap_err();
         assert_eq!(err, BlsError::InputLengthMismatch);
 
-        let err = SignatureProjective::batch_verify(
+        let err = SignatureProjective::verify_distinct(
             &[] as &[&Pubkey],
             &[] as &[&Signature],
             &[] as &[&[u8]],
@@ -664,7 +664,7 @@ mod tests {
     }
 
     #[test]
-    fn test_aggregate_verify_dyn() {
+    fn test_verify_aggregate_dyn() {
         let test_message = b"test message for dyn verify";
 
         let keypair0 = Keypair::new();
@@ -690,7 +690,7 @@ mod tests {
             std::vec![&signature0, &signature1_affine, &signature2_compressed];
 
         assert!(
-            SignatureProjective::aggregate_verify(&dyn_pubkeys, &dyn_signatures, test_message)
+            SignatureProjective::verify_aggregate(&dyn_pubkeys, &dyn_signatures, test_message)
                 .unwrap()
         );
 
@@ -699,7 +699,7 @@ mod tests {
             std::vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
         let dyn_signatures_fail: Vec<&dyn AsSignatureProjective> =
             std::vec![&signature0, &signature1_affine, &signature2_compressed];
-        assert!(!SignatureProjective::aggregate_verify(
+        assert!(!SignatureProjective::verify_aggregate(
             &dyn_pubkeys_fail,
             &dyn_signatures_fail,
             wrong_message
@@ -751,7 +751,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "parallel")]
-    fn test_parallel_aggregate_verify() {
+    fn test_parallel_verify_aggregate() {
         let message = b"test message";
         let keypairs: Vec<_> = (0..5).map(|_| Keypair::new()).collect();
         let pubkeys: Vec<_> = keypairs
@@ -764,12 +764,12 @@ mod tests {
 
         // Success case
         assert!(
-            SignatureProjective::par_aggregate_verify(&pubkey_refs, &signature_refs, message)
+            SignatureProjective::par_verify_aggregate(&pubkey_refs, &signature_refs, message)
                 .unwrap()
         );
 
         // Failure case (wrong message)
-        assert!(!SignatureProjective::par_aggregate_verify(
+        assert!(!SignatureProjective::par_verify_aggregate(
             &pubkey_refs,
             &signature_refs,
             b"wrong message"
@@ -780,7 +780,7 @@ mod tests {
         let mut bad_signatures = signatures.clone();
         bad_signatures[0] = keypairs[0].sign(b"a different message");
         let bad_signature_refs: Vec<_> = bad_signatures.iter().collect();
-        assert!(!SignatureProjective::par_aggregate_verify(
+        assert!(!SignatureProjective::par_verify_aggregate(
             &pubkey_refs,
             &bad_signature_refs,
             message
@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "parallel")]
-    fn test_par_batch_verify() {
+    fn test_par_verify_distinct() {
         let keypair0 = Keypair::new();
         let keypair1 = Keypair::new();
         let keypair2 = Keypair::new();
@@ -812,7 +812,8 @@ mod tests {
         let signatures = [&signature0, &signature1, &signature2];
 
         assert!(
-            SignatureProjective::par_batch_verify(&pubkeys, &signatures, &messages_refs,).unwrap()
+            SignatureProjective::par_verify_distinct(&pubkeys, &signatures, &messages_refs,)
+                .unwrap()
         );
     }
 }

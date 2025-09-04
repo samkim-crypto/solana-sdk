@@ -74,7 +74,7 @@ fn bench_aggregate(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let verification_result = black_box(
-                        SignatureProjective::aggregate_verify(
+                        SignatureProjective::verify_aggregate(
                             &pubkey_refs,
                             &signature_refs,
                             message,
@@ -92,7 +92,7 @@ fn bench_aggregate(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let verification_result = black_box(
-                        SignatureProjective::par_aggregate_verify(
+                        SignatureProjective::par_verify_aggregate(
                             &pubkey_refs,
                             &signature_refs,
                             message,
@@ -156,7 +156,7 @@ fn bench_batch_verification(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let verification_result = black_box(
-                        SignatureProjective::batch_verify(
+                        SignatureProjective::verify_distinct(
                             &pubkey_refs,
                             &signature_refs,
                             &message_refs,
@@ -174,7 +174,7 @@ fn bench_batch_verification(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     let verification_result = black_box(
-                        SignatureProjective::par_batch_verify(
+                        SignatureProjective::par_verify_distinct(
                             &pubkey_refs,
                             &signature_refs,
                             &message_refs,
