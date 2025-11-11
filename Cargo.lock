@@ -3916,7 +3916,7 @@ dependencies = [
 
 [[package]]
 name = "solana-sysvar-id"
-version = "3.0.0"
+version = "3.1.0"
 dependencies = [
  "solana-address",
  "solana-sdk-ids",
