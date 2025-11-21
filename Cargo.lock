@@ -2651,7 +2651,7 @@ dependencies = [
 
 [[package]]
 name = "solana-account-view"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
  "solana-address",
  "solana-program-error",

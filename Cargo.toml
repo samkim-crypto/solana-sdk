@@ -218,7 +218,7 @@ signal-hook = "0.3.17"
 siphasher = "0.3.11"
 solana-account = { path = "account", version = "3.0.0" }
 solana-account-info = { path = "account-info", version = "3.0.0" }
-solana-account-view = { path = "account-view", version = "0.0.0" }
+solana-account-view = { path = "account-view", version = "1.0.0" }
 solana-address = { path = "address", version = "2.0.0" }
 solana-address-lookup-table-interface = { path = "address-lookup-table-interface", version = "3.0.0" }
 solana-atomic-u64 = { path = "atomic-u64", version = "3.0.0" }
