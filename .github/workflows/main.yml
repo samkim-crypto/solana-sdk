@@ -224,6 +224,13 @@ jobs:
           cargo-cache-key: cargo-minimum-check
           cargo-cache-fallback-key: cargo-minimum
 
+      - name: Install additional toolchains
+        run: |
+          toolchains=$(./scripts/read-rust-versions.sh)
+          for toolchain in $toolchains; do
+            rustup toolchain install "$toolchain"
+          done
+
       - name: Run check
         run: ./scripts/check-msrv.sh
 

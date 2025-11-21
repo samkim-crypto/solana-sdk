@@ -7,6 +7,8 @@ cd "${src_root}"
 
 source "./scripts/read-cargo-variable.sh"
 
+minimum_versions=()
+
 for cargo_toml in $(git ls-files -- '**/Cargo.toml'); do
   # Read the MSRV from the crate
   minimum_version=$(readCargoVariable rust-version "$cargo_toml" 2>/dev/null)
@@ -16,5 +18,8 @@ for cargo_toml in $(git ls-files -- '**/Cargo.toml'); do
     minimum_version=$(readCargoVariable rust-version "program/Cargo.toml")
   fi
 
-  cargo +"$minimum_version" check --manifest-path "$cargo_toml"
+  minimum_versions+=("$minimum_version")
 done
+
+# Get unique versions
+printf '%s\n' "${minimum_versions[@]}" | sort -u
