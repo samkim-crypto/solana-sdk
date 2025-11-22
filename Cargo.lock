@@ -3498,7 +3498,7 @@ dependencies = [
 
 [[package]]
 name = "solana-program-log"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "solana-define-syscall",
  "solana-program-log-macro",
