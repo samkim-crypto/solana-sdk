@@ -112,15 +112,15 @@ fn bench_key_generation(c: &mut Criterion) {
 // Benchmark for creating and verifying a proof of possession
 fn bench_proof_of_possession(c: &mut Criterion) {
     let keypair = Keypair::new();
-    let pop = keypair.proof_of_possession();
+    let pop = keypair.proof_of_possession(None);
 
     c.bench_function("proof_of_possession_creation", |b| {
-        b.iter(|| black_box(keypair.proof_of_possession()));
+        b.iter(|| black_box(keypair.proof_of_possession(None)));
     });
 
     c.bench_function("proof_of_possession_verification", |b| {
         b.iter(|| {
-            black_box(keypair.public.verify_proof_of_possession(&pop)).unwrap();
+            black_box(keypair.public.verify_proof_of_possession(&pop, None)).unwrap();
         })
     });
 }

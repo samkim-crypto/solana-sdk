@@ -53,8 +53,8 @@ impl Keypair {
     }
 
     /// Generate a proof of possession for the given keypair
-    pub fn proof_of_possession(&self) -> ProofOfPossessionProjective {
-        self.secret.proof_of_possession()
+    pub fn proof_of_possession(&self, payload: Option<&[u8]>) -> ProofOfPossessionProjective {
+        self.secret.proof_of_possession(payload)
     }
 
     /// Sign a message using the provided secret key
