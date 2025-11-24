@@ -2,8 +2,6 @@
 
 #[cfg(feature = "dev-context-only-utils")]
 use arbitrary::Arbitrary;
-#[cfg(feature = "serde")]
-use serde_derive::{Deserialize, Serialize};
 #[cfg(feature = "frozen-abi")]
 use solana_frozen_abi_macro::AbiExample;
 use {
@@ -15,6 +13,11 @@ use {
 };
 #[cfg(test)]
 use {arbitrary::Unstructured, solana_epoch_schedule::MAX_LEADER_SCHEDULE_EPOCH_OFFSET};
+#[cfg(feature = "serde")]
+use {
+    serde_derive::{Deserialize, Serialize},
+    serde_with::serde_as,
+};
 
 mod vote_state_0_23_5;
 pub mod vote_state_1_14_11;
@@ -29,12 +32,6 @@ mod vote_instruction_data;
 pub use vote_instruction_data::*;
 #[cfg(any(target_os = "solana", feature = "bincode"))]
 pub(crate) mod vote_state_deserialize;
-
-/// Size of a BLS public key in a compressed point representation
-pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
-
-/// Size of a BLS proof of possession in a compressed point representation
-pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
 
 // Maximum number of votes to keep around, tightly coupled with epoch_schedule::MINIMUM_SLOTS_PER_EPOCH
 pub const MAX_LOCKOUT_HISTORY: usize = 31;
@@ -200,6 +197,48 @@ impl<I> CircBuf<I> {
         } else {
             None
         }
+    }
+}
+
+/// Size of a BLS public key in a compressed point representation
+pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
+
+/// Size of a BLS proof of possession in a compressed point representation
+pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
+
+/// Wrapper for a BLS Public Key (compressed)
+#[cfg_attr(feature = "frozen-abi", derive(AbiExample))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "dev-context-only-utils", derive(Arbitrary))]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(transparent)]
+pub struct BlsPubkey(
+    #[cfg_attr(feature = "serde", serde_as(as = "[_; 48]"))]
+    pub  [u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
+);
+
+impl Default for BlsPubkey {
+    fn default() -> Self {
+        Self([0u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE])
+    }
+}
+
+/// Wrapper for a BLS Proof of Possession (compressed)
+#[cfg_attr(feature = "frozen-abi", derive(AbiExample))]
+#[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "dev-context-only-utils", derive(Arbitrary))]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[repr(transparent)]
+pub struct BlsProofOfPossession(
+    #[cfg_attr(feature = "serde", serde_as(as = "[_; 96]"))]
+    pub  [u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
+);
+
+impl Default for BlsProofOfPossession {
+    fn default() -> Self {
+        Self([0u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE])
     }
 }
 
@@ -1321,7 +1360,7 @@ mod tests {
         run_test(vote_state_none, None);
 
         // Now try `Some`.
-        let test_bls_key = [42u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE];
+        let test_bls_key = BlsPubkey([42u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE]);
         let vote_state_some = VoteStateV4 {
             bls_pubkey_compressed: Some(test_bls_key),
             ..VoteStateV4::default()
@@ -1350,7 +1389,7 @@ mod tests {
         }
 
         // v4 to v4 conversion should preserve the BLS pubkey.
-        let test_bls_key = [128u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE];
+        let test_bls_key = BlsPubkey([128u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE]);
         let v4_state = VoteStateV4 {
             bls_pubkey_compressed: Some(test_bls_key),
             ..VoteStateV4::default()

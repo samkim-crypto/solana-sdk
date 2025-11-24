@@ -2,7 +2,7 @@ use {
     crate::{
         authorized_voters::AuthorizedVoters,
         state::{
-            BlockTimestamp, LandedVote, Lockout, VoteStateV3, VoteStateV4,
+            BlockTimestamp, BlsPubkey, LandedVote, Lockout, VoteStateV3, VoteStateV4,
             BLS_PUBLIC_KEY_COMPRESSED_SIZE, MAX_EPOCH_CREDITS_HISTORY, MAX_ITEMS,
             MAX_LOCKOUT_HISTORY,
         },
@@ -277,7 +277,8 @@ pub(crate) fn deserialize_vote_state_into_v4<'a>(
         addr_of_mut!((*vote_state).block_revenue_commission_bps)
             .write(block_revenue_commission_bps);
         addr_of_mut!((*vote_state).pending_delegator_rewards).write(pending_delegator_rewards);
-        addr_of_mut!((*vote_state).bls_pubkey_compressed).write(bls_pubkey_compressed);
+        addr_of_mut!((*vote_state).bls_pubkey_compressed)
+            .write(bls_pubkey_compressed.map(BlsPubkey));
         addr_of_mut!((*vote_state).votes).write(votes);
         addr_of_mut!((*vote_state).root_slot).write(root_slot);
         addr_of_mut!((*vote_state).authorized_voters).write(authorized_voters);

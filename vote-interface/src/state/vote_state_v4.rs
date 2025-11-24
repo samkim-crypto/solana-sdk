@@ -11,7 +11,7 @@ use solana_frozen_abi_macro::{frozen_abi, AbiExample};
 #[cfg(any(target_os = "solana", feature = "bincode"))]
 use solana_instruction::error::InstructionError;
 use {
-    super::{BlockTimestamp, LandedVote, VoteInit, VoteInitV2, BLS_PUBLIC_KEY_COMPRESSED_SIZE},
+    super::{BlockTimestamp, BlsPubkey, LandedVote, VoteInit, VoteInitV2},
     crate::authorized_voters::AuthorizedVoters,
     solana_clock::{Clock, Epoch, Slot},
     solana_pubkey::Pubkey,
@@ -49,11 +49,7 @@ pub struct VoteStateV4 {
     pub pending_delegator_rewards: u64,
 
     /// Compressed BLS pubkey for Alpenglow.
-    #[cfg_attr(
-        feature = "serde",
-        serde_as(as = "Option<[_; BLS_PUBLIC_KEY_COMPRESSED_SIZE]>")
-    )]
-    pub bls_pubkey_compressed: Option<[u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE]>,
+    pub bls_pubkey_compressed: Option<BlsPubkey>,
 
     pub votes: VecDeque<LandedVote>,
     pub root_slot: Option<Slot>,
