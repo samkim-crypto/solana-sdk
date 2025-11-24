@@ -45,26 +45,8 @@ pub use {
 };
 
 impl Sysvar for LastRestartSlot {
-    impl_sysvar_get!(id());
+    impl_sysvar_get!(sol_get_last_restart_slot);
 }
 
 #[cfg(feature = "bincode")]
 impl SysvarSerialize for LastRestartSlot {}
-
-#[cfg(test)]
-mod tests {
-    use {super::*, crate::tests::to_bytes, serial_test::serial};
-
-    #[test]
-    #[serial]
-    fn test_last_restart_slot_get_uses_sysvar_syscall() {
-        let expected = LastRestartSlot {
-            last_restart_slot: 9999,
-        };
-        let data = to_bytes(&expected);
-        crate::tests::mock_get_sysvar_syscall(&data);
-
-        let got = LastRestartSlot::get().unwrap();
-        assert_eq!(got, expected);
-    }
-}

@@ -128,24 +128,8 @@ pub use {
 };
 
 impl Sysvar for EpochSchedule {
-    impl_sysvar_get!(id());
+    impl_sysvar_get!(sol_get_epoch_schedule_sysvar);
 }
 
 #[cfg(feature = "bincode")]
 impl SysvarSerialize for EpochSchedule {}
-
-#[cfg(test)]
-mod tests {
-    use {super::*, crate::tests::to_bytes, serial_test::serial};
-
-    #[test]
-    #[serial]
-    fn test_epoch_schedule_get_uses_sysvar_syscall() {
-        let expected = EpochSchedule::custom(1234, 5678, false);
-        let data = to_bytes(&expected);
-        crate::tests::mock_get_sysvar_syscall(&data);
-
-        let got = EpochSchedule::get().unwrap();
-        assert_eq!(got, expected);
-    }
-}
