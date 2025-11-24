@@ -33,7 +33,7 @@ pub(crate) mod vote_state_deserialize;
 /// Size of a BLS public key in a compressed point representation
 pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
 
-/// Size of a BLS proof of possession in a compressed point representation
+/// Size of a BLS proof of possession in a compressed point representation; matches BLS signature size
 pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
 
 // Maximum number of votes to keep around, tightly coupled with epoch_schedule::MINIMUM_SLOTS_PER_EPOCH
