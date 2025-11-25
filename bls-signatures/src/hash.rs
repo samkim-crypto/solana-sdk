@@ -15,7 +15,14 @@ pub fn hash_message_to_point(message: &[u8]) -> G2Projective {
 }
 
 /// Hash a pubkey to a G2 point
-pub(crate) fn hash_pubkey_to_g2(public_key: &PubkeyProjective) -> G2Projective {
-    let pubkey_bytes = public_key.0.to_compressed();
-    G2Projective::hash_to_curve(&pubkey_bytes, POP_DST, &[])
+pub(crate) fn hash_pubkey_to_g2(
+    public_key: &PubkeyProjective,
+    payload: Option<&[u8]>,
+) -> G2Projective {
+    if let Some(bytes) = payload {
+        G2Projective::hash_to_curve(bytes, POP_DST, &[])
+    } else {
+        let public_key_bytes = public_key.0.to_compressed();
+        G2Projective::hash_to_curve(&public_key_bytes, POP_DST, &[])
+    }
 }

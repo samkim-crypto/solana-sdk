@@ -75,10 +75,11 @@ pub trait VerifiablePubkey: AsPubkey {
     fn verify_proof_of_possession<P: AsProofOfPossession>(
         &self,
         proof: &P,
+        payload: Option<&[u8]>,
     ) -> Result<bool, BlsError> {
         let pubkey_affine = self.try_as_affine()?;
         let proof_affine = proof.try_as_affine()?;
-        Ok(pubkey_affine._verify_proof_of_possession(&proof_affine))
+        Ok(pubkey_affine._verify_proof_of_possession(&proof_affine, payload))
     }
 }
 
@@ -274,7 +275,11 @@ impl Pubkey {
     }
 
     /// Verify a proof of possession against a public key
-    pub(crate) fn _verify_proof_of_possession(&self, proof: &ProofOfPossession) -> bool {
+    pub(crate) fn _verify_proof_of_possession(
+        &self,
+        proof: &ProofOfPossession,
+        payload: Option<&[u8]>,
+    ) -> bool {
         let Some(pubkey_affine): Option<G1Affine> = G1Affine::from_uncompressed(&self.0).into()
         else {
             return false;
@@ -289,7 +294,7 @@ impl Pubkey {
 
         // The verification equation is e(pubkey, H(pubkey)) == e(g1, proof).
         // This is rewritten to e(pubkey, H(pubkey)) * e(-g1, proof) = 1 for batching.
-        let hashed_pubkey_affine: G2Affine = hash_pubkey_to_g2(&pubkey_projective).into();
+        let hashed_pubkey_affine: G2Affine = hash_pubkey_to_g2(&pubkey_projective, payload).into();
         let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey_affine);
         let proof_prepared = G2Prepared::from(proof_affine);
 
@@ -407,7 +412,7 @@ mod tests {
     #[test]
     fn test_pubkey_verify_proof_of_possession() {
         let keypair = Keypair::new();
-        let proof_projective = keypair.proof_of_possession();
+        let proof_projective = keypair.proof_of_possession(None);
 
         let pubkey_projective: PubkeyProjective = (&keypair.public).try_into().unwrap();
         let pubkey_affine: Pubkey = pubkey_projective.into();
@@ -417,33 +422,33 @@ mod tests {
         let proof_compressed: ProofOfPossessionCompressed = proof_affine.try_into().unwrap();
 
         assert!(pubkey_projective
-            .verify_proof_of_possession(&proof_projective)
+            .verify_proof_of_possession(&proof_projective, None)
             .unwrap());
         assert!(pubkey_affine
-            .verify_proof_of_possession(&proof_projective)
+            .verify_proof_of_possession(&proof_projective, None)
             .unwrap());
         assert!(pubkey_compressed
-            .verify_proof_of_possession(&proof_projective)
+            .verify_proof_of_possession(&proof_projective, None)
             .unwrap());
 
         assert!(pubkey_projective
-            .verify_proof_of_possession(&proof_affine)
+            .verify_proof_of_possession(&proof_affine, None)
             .unwrap());
         assert!(pubkey_affine
-            .verify_proof_of_possession(&proof_affine)
+            .verify_proof_of_possession(&proof_affine, None)
             .unwrap());
         assert!(pubkey_compressed
-            .verify_proof_of_possession(&proof_affine)
+            .verify_proof_of_possession(&proof_affine, None)
             .unwrap());
 
         assert!(pubkey_projective
-            .verify_proof_of_possession(&proof_compressed)
+            .verify_proof_of_possession(&proof_compressed, None)
             .unwrap());
         assert!(pubkey_affine
-            .verify_proof_of_possession(&proof_compressed)
+            .verify_proof_of_possession(&proof_compressed, None)
             .unwrap());
         assert!(pubkey_compressed
-            .verify_proof_of_possession(&proof_compressed)
+            .verify_proof_of_possession(&proof_compressed, None)
             .unwrap());
     }
 

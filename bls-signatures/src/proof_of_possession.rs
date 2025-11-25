@@ -18,7 +18,7 @@ use {
 /// Domain separation tag used when hashing public keys to G2 in the proof of
 /// possession signing and verification functions. See the
 /// [standard](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-05#section-4.2.3).
-pub const POP_DST: &[u8] = b"BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_";
+pub const POP_DST: &[u8] = b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_";
 
 /// Size of a BLS proof of possession in a compressed point representation
 pub const BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE: usize = 96;
@@ -50,9 +50,13 @@ pub trait AsProofOfPossession {
 #[cfg(not(target_os = "solana"))]
 pub trait VerifiableProofOfPossession: AsProofOfPossessionProjective {
     /// Verifies the proof of possession against any convertible public key type.
-    fn verify<P: VerifiablePubkey>(&self, pubkey: &P) -> Result<bool, BlsError> {
+    fn verify<P: VerifiablePubkey>(
+        &self,
+        pubkey: &P,
+        payload: Option<&[u8]>,
+    ) -> Result<bool, BlsError> {
         let proof_projective = self.try_as_projective()?;
-        pubkey.verify_proof_of_possession(&proof_projective)
+        pubkey.verify_proof_of_possession(&proof_projective, payload)
     }
 }
 
@@ -172,7 +176,7 @@ mod tests {
     #[test]
     fn test_proof_of_possession() {
         let keypair = Keypair::new();
-        let proof_projective = keypair.proof_of_possession();
+        let proof_projective = keypair.proof_of_possession(None);
 
         let pubkey_projective: PubkeyProjective = (&keypair.public).try_into().unwrap();
         let pubkey_affine: Pubkey = keypair.public;
@@ -181,17 +185,17 @@ mod tests {
         let proof_affine: ProofOfPossession = proof_projective.into();
         let proof_compressed: ProofOfPossessionCompressed = proof_affine.try_into().unwrap();
 
-        assert!(proof_projective.verify(&pubkey_projective).unwrap());
-        assert!(proof_affine.verify(&pubkey_projective).unwrap());
-        assert!(proof_compressed.verify(&pubkey_projective).unwrap());
+        assert!(proof_projective.verify(&pubkey_projective, None).unwrap());
+        assert!(proof_affine.verify(&pubkey_projective, None).unwrap());
+        assert!(proof_compressed.verify(&pubkey_projective, None).unwrap());
 
-        assert!(proof_projective.verify(&pubkey_affine).unwrap());
-        assert!(proof_affine.verify(&pubkey_affine).unwrap());
-        assert!(proof_compressed.verify(&pubkey_affine).unwrap());
+        assert!(proof_projective.verify(&pubkey_affine, None).unwrap());
+        assert!(proof_affine.verify(&pubkey_affine, None).unwrap());
+        assert!(proof_compressed.verify(&pubkey_affine, None).unwrap());
 
-        assert!(proof_projective.verify(&pubkey_compressed).unwrap());
-        assert!(proof_affine.verify(&pubkey_compressed).unwrap());
-        assert!(proof_compressed.verify(&pubkey_compressed).unwrap());
+        assert!(proof_projective.verify(&pubkey_compressed, None).unwrap());
+        assert!(proof_affine.verify(&pubkey_compressed, None).unwrap());
+        assert!(proof_compressed.verify(&pubkey_compressed, None).unwrap());
     }
 
     #[test]
@@ -239,5 +243,42 @@ mod tests {
         let serialized = bincode::serialize(&original).unwrap();
         let deserialized: ProofOfPossessionCompressed = bincode::deserialize(&serialized).unwrap();
         assert_eq!(original, deserialized);
+    }
+
+    #[test]
+    fn test_proof_of_possession_with_custom_payload() {
+        let keypair = Keypair::new();
+        let custom_payload = b"SIMD-0387-context-data";
+
+        let proof_custom = keypair.proof_of_possession(Some(custom_payload));
+        assert!(keypair
+            .public
+            .verify_proof_of_possession(&proof_custom, Some(custom_payload))
+            .unwrap());
+
+        assert!(!keypair
+            .public
+            .verify_proof_of_possession(&proof_custom, None) // try verify with `None`
+            .unwrap());
+
+        let wrong_payload = b"wrong-context";
+        assert!(!keypair
+            .public
+            // try verify with wrong payload
+            .verify_proof_of_possession(&proof_custom, Some(wrong_payload))
+            .unwrap());
+
+        // verify standard PoP behavior
+        let proof_standard = keypair.proof_of_possession(None);
+        // standard passes with None
+        assert!(keypair
+            .public
+            .verify_proof_of_possession(&proof_standard, None)
+            .unwrap());
+        // standard fails with custom payload
+        assert!(!keypair
+            .public
+            .verify_proof_of_possession(&proof_standard, Some(custom_payload))
+            .unwrap());
     }
 }
