@@ -2,7 +2,8 @@
 use solana_frozen_abi_macro::{frozen_abi, AbiExample};
 use {
     crate::state::{
-        Lockout, BLS_PUBLIC_KEY_COMPRESSED_SIZE, BLS_SIGNATURE_COMPRESSED_SIZE, MAX_LOCKOUT_HISTORY,
+        Lockout, BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE, BLS_PUBLIC_KEY_COMPRESSED_SIZE,
+        MAX_LOCKOUT_HISTORY,
     },
     solana_clock::{Slot, UnixTimestamp},
     solana_hash::Hash,
@@ -217,8 +218,11 @@ pub struct VoteInitV2 {
         serde_as(as = "[_; BLS_PUBLIC_KEY_COMPRESSED_SIZE]")
     )]
     pub authorized_voter_bls_pubkey: [u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
-    #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_COMPRESSED_SIZE]"))]
-    pub authorized_voter_bls_proof_of_possession: [u8; BLS_SIGNATURE_COMPRESSED_SIZE],
+    #[cfg_attr(
+        feature = "serde",
+        serde_as(as = "[_; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE]")
+    )]
+    pub authorized_voter_bls_proof_of_possession: [u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
     pub authorized_withdrawer: Pubkey,
     pub inflation_rewards_commission_bps: u16,
     pub inflation_rewards_collector: Pubkey,
@@ -232,7 +236,8 @@ impl Default for VoteInitV2 {
             node_pubkey: Pubkey::default(),
             authorized_voter: Pubkey::default(),
             authorized_voter_bls_pubkey: [0u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
-            authorized_voter_bls_proof_of_possession: [0u8; BLS_SIGNATURE_COMPRESSED_SIZE],
+            authorized_voter_bls_proof_of_possession: [0u8;
+                BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
             authorized_withdrawer: Pubkey::default(),
             inflation_rewards_commission_bps: 0,
             inflation_rewards_collector: Pubkey::default(),
@@ -251,15 +256,18 @@ pub struct VoterWithBLSArgs {
         serde_as(as = "[_; BLS_PUBLIC_KEY_COMPRESSED_SIZE]")
     )]
     pub bls_pub_key: [u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
-    #[cfg_attr(feature = "serde", serde_as(as = "[_; BLS_SIGNATURE_COMPRESSED_SIZE]"))]
-    pub bls_proof_of_possession: [u8; BLS_SIGNATURE_COMPRESSED_SIZE],
+    #[cfg_attr(
+        feature = "serde",
+        serde_as(as = "[_; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE]")
+    )]
+    pub bls_proof_of_possession: [u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
 }
 
 impl Default for VoterWithBLSArgs {
     fn default() -> Self {
         Self {
             bls_pub_key: [0u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE],
-            bls_proof_of_possession: [0u8; BLS_SIGNATURE_COMPRESSED_SIZE],
+            bls_proof_of_possession: [0u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE],
         }
     }
 }
