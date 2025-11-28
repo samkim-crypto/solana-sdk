@@ -1,4 +1,5 @@
 #![cfg(not(target_os = "solana"))]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 
 pub use crate::{
     addition::{bls12_381_g1_addition, bls12_381_g2_addition},
