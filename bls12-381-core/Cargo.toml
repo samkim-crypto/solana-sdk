@@ -18,8 +18,8 @@ rustdoc-args = ["--cfg=docsrs"]
 [dependencies]
 
 [target.'cfg(not(target_os = "solana"))'.dependencies]
-blstrs = { workspace = true }
 blst = { workspace = true }
+blstrs = { workspace = true }
 group = { workspace = true }
 pairing = { workspace = true }
 
