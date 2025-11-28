@@ -1,10 +1,14 @@
 use {
-    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness},
+    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness, Version},
     blstrs::{G1Affine, G2Affine},
     std::convert::TryInto,
 };
 
-pub fn bls12_381_g1_point_validation(input: &[u8], endianness: Endianness) -> bool {
+pub fn bls12_381_g1_point_validation(
+    _version: Version,
+    input: &[u8],
+    endianness: Endianness,
+) -> bool {
     if input.len() != 96 {
         return false;
     }
@@ -27,7 +31,11 @@ pub fn bls12_381_g1_point_validation(input: &[u8], endianness: Endianness) -> bo
     p1_opt.is_some()
 }
 
-pub fn bls12_381_g2_point_validation(input: &[u8], endianness: Endianness) -> bool {
+pub fn bls12_381_g2_point_validation(
+    _version: Version,
+    input: &[u8],
+    endianness: Endianness,
+) -> bool {
     if input.len() != 192 {
         return false;
     }

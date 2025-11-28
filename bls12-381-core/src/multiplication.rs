@@ -1,15 +1,11 @@
 use {
-    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness},
+    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness, Version},
     blstrs::{G1Affine, G2Affine, Scalar},
     std::convert::TryInto,
 };
 
-pub enum VersionedG1Multiplication {
-    V0,
-}
-
 pub fn bls12_381_g1_multiplication(
-    _version: VersionedG1Multiplication,
+    _version: Version,
     input: &[u8],
     endianness: Endianness,
 ) -> Option<Vec<u8>> {
@@ -47,12 +43,8 @@ pub fn bls12_381_g1_multiplication(
     Some(result_affine.to_vec())
 }
 
-pub enum VersionedG2Multiplication {
-    V0,
-}
-
 pub fn bls12_381_g2_multiplication(
-    _version: VersionedG2Multiplication,
+    _version: Version,
     input: &[u8],
     endianness: Endianness,
 ) -> Option<Vec<u8>> {

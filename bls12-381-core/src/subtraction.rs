@@ -1,16 +1,12 @@
 use {
-    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness},
+    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness, Version},
     blstrs::{G1Affine, G1Projective, G2Affine, G2Projective},
     group::prime::PrimeCurveAffine,
     std::convert::TryInto,
 };
 
-pub enum VersionedG1Subtraction {
-    V0,
-}
-
 pub fn bls12_381_g1_subtraction(
-    _version: VersionedG1Subtraction,
+    _version: Version,
     input: &[u8],
     endianness: Endianness,
 ) -> Option<Vec<u8>> {
@@ -56,12 +52,8 @@ pub fn bls12_381_g1_subtraction(
     Some(diff_affine.to_vec())
 }
 
-pub enum VersionedG2Subtraction {
-    V0,
-}
-
 pub fn bls12_381_g2_subtraction(
-    _version: VersionedG2Subtraction,
+    _version: Version,
     input: &[u8],
     endianness: Endianness,
 ) -> Option<Vec<u8>> {

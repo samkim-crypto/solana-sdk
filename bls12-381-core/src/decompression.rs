@@ -1,10 +1,14 @@
 use {
-    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness},
+    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness, Version},
     blstrs::{G1Affine, G2Affine},
     std::convert::TryInto,
 };
 
-pub fn bls12_381_g1_decompress(input: &[u8], endianness: Endianness) -> Option<Vec<u8>> {
+pub fn bls12_381_g1_decompress(
+    _version: Version,
+    input: &[u8],
+    endianness: Endianness,
+) -> Option<Vec<u8>> {
     if input.len() != 48 {
         return None;
     }
@@ -29,7 +33,11 @@ pub fn bls12_381_g1_decompress(input: &[u8], endianness: Endianness) -> Option<V
     Some(result_affine.to_vec())
 }
 
-pub fn bls12_381_g2_decompress(input: &[u8], endianness: Endianness) -> Option<Vec<u8>> {
+pub fn bls12_381_g2_decompress(
+    _version: Version,
+    input: &[u8],
+    endianness: Endianness,
+) -> Option<Vec<u8>> {
     if input.len() != 96 {
         return None;
     }

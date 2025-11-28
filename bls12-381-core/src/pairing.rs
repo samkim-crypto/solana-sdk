@@ -1,5 +1,5 @@
 use {
-    crate::Endianness,
+    crate::{Endianness, Version},
     blst::*,
     blstrs::{Bls12, G1Affine, G2Affine, G2Prepared, Gt},
     group::Group,
@@ -54,6 +54,7 @@ fn serialize_gt(gt: Gt, endianness: Endianness) -> Vec<u8> {
 }
 
 pub fn bls12_381_pairing_map(
+    _version: Version,
     num_pairs: u64,
     g1_bytes: &[u8],
     g2_bytes: &[u8],

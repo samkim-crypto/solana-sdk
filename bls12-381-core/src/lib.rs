@@ -22,6 +22,11 @@ pub enum Endianness {
     LE,
 }
 
+pub enum Version {
+    /// SIMD-388: BLS12-381 Elliptic Curve Syscalls
+    V0,
+}
+
 fn reverse_48_byte_chunks(bytes: &mut [u8]) {
     for chunk in bytes.chunks_mut(48) {
         chunk.reverse();

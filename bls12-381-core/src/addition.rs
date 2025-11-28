@@ -1,14 +1,10 @@
 use {
-    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness},
+    crate::{reverse_48_byte_chunks, swap_g2_c0_c1, Endianness, Version},
     blstrs::{G1Affine, G1Projective, G2Affine, G2Projective},
 };
 
-pub enum VersionedG1Addition {
-    V0,
-}
-
 pub fn bls12_381_g1_addition(
-    _version: VersionedG1Addition,
+    _version: Version,
     input: &[u8],
     endianness: Endianness,
 ) -> Option<Vec<u8>> {
@@ -52,12 +48,8 @@ pub fn bls12_381_g1_addition(
     Some(sum_affine.to_vec())
 }
 
-pub enum VersionedG2Addition {
-    V0,
-}
-
 pub fn bls12_381_g2_addition(
-    _version: VersionedG2Addition,
+    _version: Version,
     input: &[u8],
     endianness: Endianness,
 ) -> Option<Vec<u8>> {
