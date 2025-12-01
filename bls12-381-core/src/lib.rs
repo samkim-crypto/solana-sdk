@@ -15,6 +15,8 @@ pub(crate) mod decompression;
 pub(crate) mod multiplication;
 pub(crate) mod pairing;
 pub(crate) mod subtraction;
+#[cfg(test)]
+pub(crate) mod test_vectors;
 pub(crate) mod validation;
 
 pub enum Endianness {

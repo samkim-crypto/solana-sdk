@@ -93,3 +93,162 @@ pub fn bls12_381_g2_addition(
     }
     Some(sum_affine.to_vec())
 }
+
+#[cfg(test)]
+mod tests {
+    use {super::*, crate::test_vectors::*};
+
+    fn run_g1_test(
+        op_name: &str,
+        func: fn(Version, &[u8], Endianness) -> Option<Vec<u8>>,
+        input_be: &[u8],
+        output_be: &[u8],
+        input_le: &[u8],
+        output_le: &[u8],
+    ) {
+        // Test Big Endian
+        let result_be = func(Version::V0, input_be, Endianness::BE);
+        assert_eq!(
+            result_be,
+            Some(output_be.to_vec()),
+            "G1 {} BE Test Failed",
+            op_name
+        );
+
+        // Test Little Endian
+        let result_le = func(Version::V0, input_le, Endianness::LE);
+        assert_eq!(
+            result_le,
+            Some(output_le.to_vec()),
+            "G1 {} LE Test Failed",
+            op_name
+        );
+    }
+
+    fn run_g2_test(
+        op_name: &str,
+        func: fn(Version, &[u8], Endianness) -> Option<Vec<u8>>,
+        input_be: &[u8],
+        output_be: &[u8],
+        input_le: &[u8],
+        output_le: &[u8],
+    ) {
+        // Test Big Endian
+        let result_be = func(Version::V0, input_be, Endianness::BE);
+        assert_eq!(
+            result_be,
+            Some(output_be.to_vec()),
+            "G2 {} BE Test Failed",
+            op_name
+        );
+
+        // Test Little Endian
+        let result_le = func(Version::V0, input_le, Endianness::LE);
+        assert_eq!(
+            result_le,
+            Some(output_le.to_vec()),
+            "G2 {} LE Test Failed",
+            op_name
+        );
+    }
+
+    #[test]
+    fn test_g1_addition_random() {
+        run_g1_test(
+            "ADD",
+            bls12_381_g1_addition,
+            INPUT_BE_G1_ADD_RANDOM,
+            OUTPUT_BE_G1_ADD_RANDOM,
+            INPUT_LE_G1_ADD_RANDOM,
+            OUTPUT_LE_G1_ADD_RANDOM,
+        );
+    }
+
+    #[test]
+    fn test_g1_addition_doubling() {
+        run_g1_test(
+            "ADD",
+            bls12_381_g1_addition,
+            INPUT_BE_G1_ADD_DOUBLING,
+            OUTPUT_BE_G1_ADD_DOUBLING,
+            INPUT_LE_G1_ADD_DOUBLING,
+            OUTPUT_LE_G1_ADD_DOUBLING,
+        );
+    }
+
+    #[test]
+    fn test_g1_addition_infinity_edge_cases() {
+        // P + Inf
+        run_g1_test(
+            "ADD",
+            bls12_381_g1_addition,
+            INPUT_BE_G1_ADD_P_PLUS_INF,
+            OUTPUT_BE_G1_ADD_P_PLUS_INF,
+            INPUT_LE_G1_ADD_P_PLUS_INF,
+            OUTPUT_LE_G1_ADD_P_PLUS_INF,
+        );
+        // Inf + Inf
+        run_g1_test(
+            "ADD",
+            bls12_381_g1_addition,
+            INPUT_BE_G1_ADD_INF_PLUS_INF,
+            OUTPUT_BE_G1_ADD_INF_PLUS_INF,
+            INPUT_LE_G1_ADD_INF_PLUS_INF,
+            OUTPUT_LE_G1_ADD_INF_PLUS_INF,
+        );
+    }
+
+    #[test]
+    fn test_g2_addition_random() {
+        run_g2_test(
+            "ADD",
+            bls12_381_g2_addition,
+            INPUT_BE_G2_ADD_RANDOM,
+            OUTPUT_BE_G2_ADD_RANDOM,
+            INPUT_LE_G2_ADD_RANDOM,
+            OUTPUT_LE_G2_ADD_RANDOM,
+        );
+    }
+
+    #[test]
+    fn test_g2_addition_doubling() {
+        run_g2_test(
+            "ADD",
+            bls12_381_g2_addition,
+            INPUT_BE_G2_ADD_DOUBLING,
+            OUTPUT_BE_G2_ADD_DOUBLING,
+            INPUT_LE_G2_ADD_DOUBLING,
+            OUTPUT_LE_G2_ADD_DOUBLING,
+        );
+    }
+
+    #[test]
+    fn test_g2_addition_infinity_edge_cases() {
+        // P + Inf
+        run_g2_test(
+            "ADD",
+            bls12_381_g2_addition,
+            INPUT_BE_G2_ADD_P_PLUS_INF,
+            OUTPUT_BE_G2_ADD_P_PLUS_INF,
+            INPUT_LE_G2_ADD_P_PLUS_INF,
+            OUTPUT_LE_G2_ADD_P_PLUS_INF,
+        );
+        // Inf + Inf
+        run_g2_test(
+            "ADD",
+            bls12_381_g2_addition,
+            INPUT_BE_G2_ADD_INF_PLUS_INF,
+            OUTPUT_BE_G2_ADD_INF_PLUS_INF,
+            INPUT_LE_G2_ADD_INF_PLUS_INF,
+            OUTPUT_LE_G2_ADD_INF_PLUS_INF,
+        );
+    }
+
+    #[test]
+    fn test_invalid_length() {
+        // G1 expects 192 bytes
+        assert!(bls12_381_g1_addition(Version::V0, &[0u8; 191], Endianness::BE).is_none());
+        // G2 expects 384 bytes
+        assert!(bls12_381_g2_addition(Version::V0, &[0u8; 383], Endianness::BE).is_none());
+    }
+}
