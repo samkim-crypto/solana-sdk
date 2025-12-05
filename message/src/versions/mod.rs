@@ -10,6 +10,17 @@ use {
     solana_sanitize::{Sanitize, SanitizeError},
     std::collections::HashSet,
 };
+#[cfg(feature = "wincode")]
+use {
+    crate::{
+        legacy::MessageUninitBuilder as LegacyMessageUninitBuilder, MessageHeaderUninitBuilder,
+    },
+    core::mem::MaybeUninit,
+    wincode::{
+        io::{Reader, Writer},
+        ReadResult, SchemaRead, SchemaWrite, WriteResult,
+    },
+};
 #[cfg(feature = "serde")]
 use {
     serde::{
@@ -323,6 +334,83 @@ impl<'de> serde::Deserialize<'de> for VersionedMessage {
         }
 
         deserializer.deserialize_tuple(2, MessageVisitor)
+    }
+}
+
+#[cfg(feature = "wincode")]
+impl SchemaWrite for VersionedMessage {
+    type Src = Self;
+
+    #[inline(always)]
+    fn size_of(src: &Self::Src) -> WriteResult<usize> {
+        match src {
+            VersionedMessage::Legacy(message) => LegacyMessage::size_of(message),
+            // +1 for message version prefix
+            #[expect(clippy::arithmetic_side_effects)]
+            VersionedMessage::V0(message) => Ok(1 + v0::Message::size_of(message)?),
+        }
+    }
+
+    #[inline(always)]
+    fn write(writer: &mut impl Writer, src: &Self::Src) -> WriteResult<()> {
+        match src {
+            VersionedMessage::Legacy(message) => LegacyMessage::write(writer, message),
+            VersionedMessage::V0(message) => {
+                u8::write(writer, &MESSAGE_VERSION_PREFIX)?;
+                v0::Message::write(writer, message)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "wincode")]
+impl<'de> SchemaRead<'de> for VersionedMessage {
+    type Dst = Self;
+
+    fn read(reader: &mut impl Reader<'de>, dst: &mut MaybeUninit<Self::Dst>) -> ReadResult<()> {
+        // If the first bit is set, the remaining 7 bits will be used to determine
+        // which message version is serialized starting from version `0`. If the first
+        // is bit is not set, all bytes are used to encode the legacy `Message`
+        // format.
+        let variant = u8::get(reader)?;
+
+        if variant & MESSAGE_VERSION_PREFIX != 0 {
+            use wincode::error::invalid_tag_encoding;
+
+            let version = variant & !MESSAGE_VERSION_PREFIX;
+            return match version {
+                0 => {
+                    let msg = v0::Message::get(reader)?;
+                    dst.write(VersionedMessage::V0(msg));
+                    Ok(())
+                }
+                _ => Err(invalid_tag_encoding(version as usize)),
+            };
+        }
+
+        let mut msg = MaybeUninit::<LegacyMessage>::uninit();
+        let mut msg_builder = LegacyMessageUninitBuilder::from_maybe_uninit_mut(&mut msg);
+        // We've already read the variant byte which, in the legacy case, represents
+        // the `num_required_signatures` field.
+        // As such, we need to write the remaining fields into the message manually,
+        // as calling `LegacyMessage::read` will miss the first field.
+        let mut header_builder =
+            MessageHeaderUninitBuilder::from_maybe_uninit_mut(msg_builder.uninit_header_mut());
+        header_builder.write_num_required_signatures(variant);
+        header_builder.read_num_readonly_signed_accounts(reader)?;
+        header_builder.read_num_readonly_unsigned_accounts(reader)?;
+        header_builder.finish();
+        unsafe { msg_builder.assume_init_header() };
+
+        msg_builder.read_account_keys(reader)?;
+        msg_builder.read_recent_blockhash(reader)?;
+        msg_builder.read_instructions(reader)?;
+        msg_builder.finish();
+
+        let msg = unsafe { msg.assume_init() };
+        dst.write(VersionedMessage::Legacy(msg));
+
+        Ok(())
     }
 }
 
