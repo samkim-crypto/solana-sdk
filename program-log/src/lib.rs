@@ -1,13 +1,17 @@
 //! Lightweight log utility for Solana programs.
 //!
-//! This crate provides a `Logger` struct that can be used to efficiently log messages
-//! in a Solana program. The `Logger` struct is a wrapper around a fixed-size buffer,
-//! where types that implement the `Log` trait can be appended to the buffer.
+//! Logging is the main mechanism for getting debugging information out of
+//! running Solana programs, and there are several functions available for doing
+//! so efficiently, depending on the type of data being logged.
 //!
-//! The `Logger` struct is generic over the size of the buffer, and the buffer size
-//! should be chosen based on the expected size of the log messages. When the buffer is
-//! full, the log message will be truncated. This is represented by the `@` character
-//! at the end of the log message.
+//! This crate provides a `Logger` struct and a collection of helper functions that
+//! can be used to efficiently log messages in a Solana program.
+//!
+//! The `Logger` struct is a wrapper around a fixed-size buffer. Types that
+//! implement the `Log` trait can be appended to this buffer. The struct is
+//! generic over the buffer size, which should be chosen based on the expected
+//! size of the log messages. When the buffer becomes full, the log message is
+//! truncated, indicated by an `@` character at the end of the message.
 //!
 //! # Example
 //!
@@ -48,11 +52,14 @@
 #![allow(clippy::arithmetic_side_effects)]
 
 pub mod logger;
+mod wrapper;
 
-// Re-export for easier access.
-pub use logger::{Argument, Logger};
 #[cfg(feature = "macro")]
 pub use solana_program_log_macro::*;
+pub use {
+    logger::{Argument, Logger},
+    wrapper::*,
+};
 
 // Enabling the "std" feature when `target_os = "solana"` or
 // `target_arch = "bpf"` has no effect.
