@@ -319,7 +319,7 @@ solana-time-utils = { path = "time-utils", version = "3.0.0" }
 solana-transaction = { path = "transaction", version = "3.0.0" }
 solana-transaction-error = { path = "transaction-error", version = "3.0.0" }
 solana-validator-exit = { path = "validator-exit", version = "3.0.0" }
-solana-vote-interface = { path = "vote-interface", version = "4.0.0" }
+solana-vote-interface = { path = "vote-interface", version = "5.0.0" }
 static_assertions = "1.1.0"
 strum = "0.24"
 strum_macros = "0.24"
