@@ -140,4 +140,23 @@ mod tests {
             .verify_proof_of_possession(&proof_standard, Some(custom_payload))
             .unwrap());
     }
+
+    #[test]
+    fn test_verify_proof_of_possession_with_raw_bytes() {
+        let keypair = Keypair::new();
+        let pop_projective = keypair.proof_of_possession(None);
+
+        let pubkey_bytes: [u8; 48] = PubkeyCompressed::try_from(keypair.public).unwrap().0;
+
+        let pop_affine = ProofOfPossession::from(pop_projective);
+        let pop_bytes: [u8; 96] = ProofOfPossessionCompressed::try_from(pop_affine).unwrap().0;
+
+        assert!(pubkey_bytes
+            .verify_proof_of_possession(&pop_bytes, None)
+            .unwrap());
+        assert!(keypair
+            .public
+            .verify_proof_of_possession(&pop_bytes, None)
+            .unwrap());
+    }
 }
