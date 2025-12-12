@@ -6,7 +6,7 @@ use blstrs::G1Projective;
 use {
     crate::{
         error::BlsError,
-        hash::hash_message_to_point,
+        hash::hash_signature_message_to_point,
         pubkey::{AsPubkeyProjective, Pubkey, PubkeyProjective, VerifiablePubkey},
         signature::bytes::Signature,
     },
@@ -134,7 +134,7 @@ impl SignatureProjective {
 
         let mut prepared_hashes = alloc::vec::Vec::with_capacity(messages.len());
         for message in messages {
-            let hashed_message: G2Affine = hash_message_to_point(message).into();
+            let hashed_message: G2Affine = hash_signature_message_to_point(message).into();
             prepared_hashes.push(G2Prepared::from(hashed_message));
         }
 

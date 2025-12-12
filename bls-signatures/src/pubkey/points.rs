@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 use {
     crate::{
         error::BlsError,
-        hash::{hash_message_to_point, hash_pubkey_to_g2},
+        hash::{hash_pop_payload_to_point, hash_signature_message_to_point},
         proof_of_possession::{AsProofOfPossessionAffine, ProofOfPossessionAffine},
         secret_key::SecretKey,
         signature::{AsSignatureAffine, SignatureAffine},
@@ -155,7 +155,7 @@ impl PubkeyAffine {
         // The verification equation is e(pubkey, H(m)) = e(g1, signature).
         // This can be rewritten as e(pubkey, H(m)) * e(-g1, signature) = 1, which
         // allows for a more efficient verification using a multi-miller loop.
-        let hashed_message: G2Affine = hash_message_to_point(message).into();
+        let hashed_message: G2Affine = hash_signature_message_to_point(message).into();
         let hashed_message_prepared = G2Prepared::from(hashed_message);
         let signature_prepared = G2Prepared::from(signature.0);
 
@@ -182,8 +182,12 @@ impl PubkeyAffine {
     ) -> bool {
         // The verification equation is e(pubkey, H(pubkey)) == e(g1, proof).
         // This is rewritten to e(pubkey, H(pubkey)) * e(-g1, proof) = 1 for batching.
-        let hashed_pubkey_affine: G2Affine = hash_pubkey_to_g2(self, payload).into();
-        let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey_affine);
+        let hashed_pubkey: G2Affine = if let Some(bytes) = payload {
+            hash_pop_payload_to_point(bytes).into()
+        } else {
+            hash_pop_payload_to_point(&self.0.to_compressed()).into()
+        };
+        let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey);
         let proof_prepared = G2Prepared::from(proof.0);
 
         // Use the static value if std is available, otherwise compute it
