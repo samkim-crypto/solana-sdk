@@ -158,5 +158,19 @@ mod tests {
             .public
             .verify_proof_of_possession(&pop_bytes, None)
             .unwrap());
+
+        // malleable public key
+        let mut bad_pubkey_bytes = pubkey_bytes;
+        bad_pubkey_bytes[0] ^= 0xFF;
+
+        let result = bad_pubkey_bytes.verify_proof_of_possession(&pop_bytes, None);
+        assert!(result.is_err());
+
+        // malleable PoP
+        let mut bad_pop_bytes = pop_bytes;
+        bad_pop_bytes[0] ^= 0xFF;
+
+        let result = pop_bytes.verify_proof_of_possession(&bad_pop_bytes, None);
+        assert!(result.is_err());
     }
 }

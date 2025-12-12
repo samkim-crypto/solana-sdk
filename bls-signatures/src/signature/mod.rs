@@ -429,5 +429,19 @@ mod tests {
         assert!(pubkey_bytes
             .verify_signature(&signature_bytes, message)
             .unwrap());
+
+        // malleable public key
+        let mut bad_pubkey_bytes = pubkey_bytes;
+        bad_pubkey_bytes[0] ^= 0xFF;
+
+        let result = bad_pubkey_bytes.verify_signature(&signature_bytes, message);
+        assert!(result.is_err());
+
+        // malleable signature
+        let mut bad_signature_bytes = signature_bytes;
+        bad_signature_bytes[0] ^= 0xFF;
+
+        let result = pubkey_bytes.verify_signature(&bad_signature_bytes, message);
+        assert!(result.is_err());
     }
 }
