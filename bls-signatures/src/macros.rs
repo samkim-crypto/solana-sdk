@@ -344,5 +344,49 @@ macro_rules! impl_bls_conversions {
                 &self.0
             }
         }
+
+        impl TryFrom<&[u8]> for $projective {
+            type Error = crate::error::BlsError;
+
+            fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+                if bytes.len() == $uncompressed_size {
+                    let array: [u8; $uncompressed_size] = bytes
+                        .try_into()
+                        .map_err(|_| crate::error::BlsError::ParseFromBytes)?;
+                    let wrapper = $uncompressed(array);
+                    Self::try_from(&wrapper)
+                } else if bytes.len() == $compressed_size {
+                    let array: [u8; $compressed_size] = bytes
+                        .try_into()
+                        .map_err(|_| crate::error::BlsError::ParseFromBytes)?;
+                    let wrapper = $compressed(array);
+                    Self::try_from(&wrapper)
+                } else {
+                    Err(crate::error::BlsError::ParseFromBytes)
+                }
+            }
+        }
+
+        impl TryFrom<&[u8]> for $affine {
+            type Error = crate::error::BlsError;
+
+            fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+                if bytes.len() == $uncompressed_size {
+                    let array: [u8; $uncompressed_size] = bytes
+                        .try_into()
+                        .map_err(|_| crate::error::BlsError::ParseFromBytes)?;
+                    let wrapper = $uncompressed(array);
+                    Self::try_from(&wrapper)
+                } else if bytes.len() == $compressed_size {
+                    let array: [u8; $compressed_size] = bytes
+                        .try_into()
+                        .map_err(|_| crate::error::BlsError::ParseFromBytes)?;
+                    let wrapper = $compressed(array);
+                    Self::try_from(&wrapper)
+                } else {
+                    Err(crate::error::BlsError::ParseFromBytes)
+                }
+            }
+        }
     };
 }

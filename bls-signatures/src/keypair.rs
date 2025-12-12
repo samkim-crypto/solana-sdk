@@ -157,7 +157,7 @@ mod tests {
     fn test_keygen_derive() {
         let ikm = b"test_ikm";
         let secret = SecretKey::derive(ikm).unwrap();
-        let public: Pubkey = PubkeyProjective::from_secret(&secret).into();
+        let public: PubkeyAffine = PubkeyProjective::from_secret(&secret).into();
         let keypair = Keypair::derive(ikm).unwrap();
         assert_eq!(keypair.secret, secret);
         assert_eq!(keypair.public, public);
@@ -168,7 +168,7 @@ mod tests {
     fn test_keygen_derive_from_signer() {
         let solana_keypair = solana_keypair::Keypair::new();
         let secret = SecretKey::derive_from_signer(&solana_keypair, b"alpenglow-vote").unwrap();
-        let public: Pubkey = PubkeyProjective::from_secret(&secret).into();
+        let public: PubkeyAffine = PubkeyProjective::from_secret(&secret).into();
         let keypair = Keypair::derive_from_signer(&solana_keypair, b"alpenglow-vote").unwrap();
 
         assert_eq!(keypair.secret, secret);
