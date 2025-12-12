@@ -31,6 +31,21 @@ pub trait AsProofOfPossession {
     fn try_as_affine(&self) -> Result<ProofOfPossession, BlsError>;
 }
 
+#[cfg(not(target_os = "solana"))]
+impl AsProofOfPossession for [u8; BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE] {
+    fn try_as_affine(&self) -> Result<ProofOfPossession, BlsError> {
+        let compressed = ProofOfPossessionCompressed(*self);
+        ProofOfPossession::try_from(compressed)
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsProofOfPossession for [u8; BLS_PROOF_OF_POSSESSION_AFFINE_SIZE] {
+    fn try_as_affine(&self) -> Result<ProofOfPossession, BlsError> {
+        Ok(ProofOfPossession(*self))
+    }
+}
+
 /// A serialized BLS proof of possession in a compressed point representation.
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]

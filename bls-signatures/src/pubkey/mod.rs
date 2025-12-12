@@ -14,9 +14,12 @@ pub use {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "parallel")]
+    use rayon::prelude::*;
     use {
         super::*,
         crate::{
+            error::BlsError,
             keypair::Keypair,
             proof_of_possession::{ProofOfPossession, ProofOfPossessionCompressed},
             signature::{Signature, SignatureCompressed},
@@ -24,8 +27,6 @@ mod tests {
         core::str::FromStr,
         std::string::ToString,
     };
-    #[cfg(feature = "parallel")]
-    use {crate::error::BlsError, rayon::prelude::*};
 
     #[test]
     fn test_pubkey_verify_signature() {
@@ -201,6 +202,26 @@ mod tests {
         assert_eq!(
             PubkeyProjective::par_aggregate(empty.par_iter()).unwrap_err(),
             BlsError::EmptyAggregation
+        );
+    }
+
+    #[test]
+    fn test_invalid_length_pubkeys() {
+        let keypair = Keypair::new();
+        let pubkey_bytes: [u8; 48] = PubkeyCompressed::try_from(keypair.public).unwrap().0;
+
+        let mut pubkey_long_bytes = alloc::vec::Vec::from(pubkey_bytes);
+        pubkey_long_bytes.extend_from_slice(&[0u8; 1]); // Length is now 49
+
+        assert_eq!(
+            PubkeyProjective::try_from(pubkey_long_bytes.as_slice()).unwrap_err(),
+            BlsError::ParseFromBytes
+        );
+
+        let pubkey_short_bytes = &pubkey_bytes[..47];
+        assert_eq!(
+            PubkeyProjective::try_from(pubkey_short_bytes).unwrap_err(),
+            BlsError::ParseFromBytes
         );
     }
 }

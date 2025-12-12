@@ -31,6 +31,21 @@ pub trait AsSignature {
     fn try_as_affine(&self) -> Result<Signature, BlsError>;
 }
 
+#[cfg(not(target_os = "solana"))]
+impl AsSignature for [u8; BLS_SIGNATURE_COMPRESSED_SIZE] {
+    fn try_as_affine(&self) -> Result<Signature, BlsError> {
+        let compressed = SignatureCompressed(*self);
+        Signature::try_from(compressed)
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsSignature for [u8; BLS_SIGNATURE_AFFINE_SIZE] {
+    fn try_as_affine(&self) -> Result<Signature, BlsError> {
+        Ok(Signature(*self))
+    }
+}
+
 /// A serialized BLS signature in a compressed point representation
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]

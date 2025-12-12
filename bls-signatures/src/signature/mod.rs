@@ -407,4 +407,41 @@ mod tests {
                 .unwrap()
         );
     }
+
+    #[test]
+    fn test_verify_signature_with_raw_bytes() {
+        let keypair = Keypair::new();
+        let message = b"byte interop test";
+        let signature_projective = keypair.sign(message);
+
+        let pubkey_bytes: [u8; 48] = PubkeyCompressed::try_from(keypair.public).unwrap().0;
+
+        let signature_affine = Signature::from(signature_projective);
+        let signature_bytes: [u8; 96] = SignatureCompressed::try_from(signature_affine).unwrap().0;
+
+        assert!(pubkey_bytes
+            .verify_signature(&signature_bytes, message)
+            .unwrap());
+        assert!(keypair
+            .public
+            .verify_signature(&signature_bytes, message)
+            .unwrap());
+        assert!(pubkey_bytes
+            .verify_signature(&signature_bytes, message)
+            .unwrap());
+
+        // malleable public key
+        let mut bad_pubkey_bytes = pubkey_bytes;
+        bad_pubkey_bytes[0] ^= 0xFF;
+
+        let result = bad_pubkey_bytes.verify_signature(&signature_bytes, message);
+        assert!(result.is_err());
+
+        // malleable signature
+        let mut bad_signature_bytes = signature_bytes;
+        bad_signature_bytes[0] ^= 0xFF;
+
+        let result = pubkey_bytes.verify_signature(&bad_signature_bytes, message);
+        assert!(result.is_err());
+    }
 }

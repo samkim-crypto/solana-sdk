@@ -72,6 +72,21 @@ pub trait VerifiablePubkey: AsPubkey {
     }
 }
 
+#[cfg(not(target_os = "solana"))]
+impl AsPubkey for [u8; BLS_PUBLIC_KEY_COMPRESSED_SIZE] {
+    fn try_as_affine(&self) -> Result<Pubkey, BlsError> {
+        let compressed = PubkeyCompressed(*self);
+        Pubkey::try_from(compressed)
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl AsPubkey for [u8; BLS_PUBLIC_KEY_AFFINE_SIZE] {
+    fn try_as_affine(&self) -> Result<Pubkey, BlsError> {
+        Ok(Pubkey(*self))
+    }
+}
+
 /// A serialized BLS public key in a compressed point representation.
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
 #[cfg_attr(feature = "serde", cfg_eval::cfg_eval, serde_as)]
