@@ -7,9 +7,8 @@ pub use bytes::{
     BLS_PUBLIC_KEY_COMPRESSED_BASE64_SIZE, BLS_PUBLIC_KEY_COMPRESSED_SIZE,
 };
 #[cfg(not(target_os = "solana"))]
-pub use {
-    bytes::{AsPubkey, VerifiablePubkey},
-    points::{AsPubkeyProjective, PubkeyProjective},
+pub use points::{
+    AsPubkeyAffine, AsPubkeyProjective, PubkeyAffine, PubkeyProjective, VerifiablePubkey,
 };
 
 #[cfg(test)]
