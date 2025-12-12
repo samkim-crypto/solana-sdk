@@ -26,12 +26,10 @@ pub trait AsSignatureProjective {
 
 /// A trait that provides verification methods to any convertible signature type.
 #[cfg(not(target_os = "solana"))]
-pub trait VerifiableSignature: AsSignatureProjective {
+pub trait VerifiableSignature: AsSignatureAffine + Sized {
     /// Verify the signature against any convertible public key type and a message.
     fn verify<P: VerifiablePubkey>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError> {
-        // The logic is defined once here.
-        let signature_projective = self.try_as_projective()?;
-        pubkey.verify_signature(&signature_projective, message)
+        pubkey.verify_signature(self, message)
     }
 }
 
@@ -297,7 +295,7 @@ impl SignatureProjective {
 }
 
 #[cfg(not(target_os = "solana"))]
-impl<T: AsSignatureProjective> VerifiableSignature for T {}
+impl<T: AsSignatureAffine> VerifiableSignature for T {}
 
 /// A trait for types that can be converted into a `SignatureAffine`.
 #[cfg(not(target_os = "solana"))]
