@@ -14,6 +14,8 @@ pub use {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "parallel")]
+    use rayon::prelude::*;
     use {
         super::*,
         crate::{
@@ -25,8 +27,6 @@ mod tests {
         core::str::FromStr,
         std::string::ToString,
     };
-    #[cfg(feature = "parallel")]
-    use {crate::error::BlsError, rayon::prelude::*};
 
     #[test]
     fn test_pubkey_verify_signature() {
