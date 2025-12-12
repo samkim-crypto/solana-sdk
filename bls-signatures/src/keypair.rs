@@ -1,9 +1,7 @@
 use crate::{
     error::BlsError,
     proof_of_possession::ProofOfPossessionProjective,
-    pubkey::{
-        Pubkey, PubkeyAffine, PubkeyProjective, VerifiablePubkey, BLS_PUBLIC_KEY_AFFINE_SIZE,
-    },
+    pubkey::{PubkeyAffine, PubkeyProjective, VerifiablePubkey, BLS_PUBLIC_KEY_AFFINE_SIZE},
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::{AsSignatureAffine, SignatureProjective},
 };
@@ -96,8 +94,7 @@ impl From<&Keypair> for [u8; BLS_KEYPAIR_SIZE] {
         let mut bytes = [0u8; BLS_KEYPAIR_SIZE];
         bytes[..BLS_SECRET_KEY_SIZE]
             .copy_from_slice(&Into::<[u8; BLS_SECRET_KEY_SIZE]>::into(&keypair.secret));
-        let pubkey_bytes: Pubkey = (&keypair.public).into();
-        bytes[BLS_SECRET_KEY_SIZE..].copy_from_slice(&pubkey_bytes.0);
+        bytes[BLS_SECRET_KEY_SIZE..].copy_from_slice(&keypair.public.to_bytes_uncompressed());
         bytes
     }
 }

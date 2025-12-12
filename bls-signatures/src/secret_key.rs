@@ -72,7 +72,7 @@ impl SecretKey {
             hash_pop_payload_to_point(bytes)
         } else {
             let pubkey = PubkeyProjective::from_secret(self);
-            let pubkey_bytes = pubkey.0.to_compressed();
+            let pubkey_bytes = pubkey.to_bytes_compressed();
             hash_pop_payload_to_point(&pubkey_bytes)
         };
         ProofOfPossessionProjective(hashed_point * self.0)

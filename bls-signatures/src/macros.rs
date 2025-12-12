@@ -312,5 +312,37 @@ macro_rules! impl_bls_conversions {
                 $affine::try_from(&wrapper)
             }
         }
+
+        impl $projective {
+            pub fn to_bytes_compressed(&self) -> [u8; $compressed_size] {
+                self.0.to_compressed()
+            }
+
+            pub fn to_bytes_uncompressed(&self) -> [u8; $uncompressed_size] {
+                self.0.to_uncompressed()
+            }
+        }
+
+        impl $affine {
+            pub fn to_bytes_compressed(&self) -> [u8; $compressed_size] {
+                self.0.to_compressed()
+            }
+
+            pub fn to_bytes_uncompressed(&self) -> [u8; $uncompressed_size] {
+                self.0.to_uncompressed()
+            }
+        }
+
+        impl $uncompressed {
+            pub fn as_bytes(&self) -> &[u8] {
+                &self.0
+            }
+        }
+
+        impl $compressed {
+            pub fn as_bytes(&self) -> &[u8] {
+                &self.0
+            }
+        }
     };
 }

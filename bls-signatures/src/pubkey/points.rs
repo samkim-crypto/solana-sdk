@@ -185,7 +185,8 @@ impl PubkeyAffine {
         let hashed_pubkey: G2Affine = if let Some(bytes) = payload {
             hash_pop_payload_to_point(bytes).into()
         } else {
-            hash_pop_payload_to_point(&self.0.to_compressed()).into()
+            let pubkey_bytes = self.to_bytes_compressed();
+            hash_pop_payload_to_point(&pubkey_bytes).into()
         };
         let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey);
         let proof_prepared = G2Prepared::from(proof.0);
