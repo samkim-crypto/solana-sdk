@@ -382,7 +382,7 @@ mod tests {
         let keypairs: Vec<_> = (0..5).map(|_| Keypair::new()).collect();
         let pubkeys: Vec<_> = keypairs
             .iter()
-            .map(|kp| PubkeyProjective::try_from(&kp.public).unwrap())
+            .map(|kp| PubkeyProjective::from(&kp.public))
             .collect();
         let signatures: Vec<_> = keypairs.iter().map(|kp| kp.sign(message)).collect();
 

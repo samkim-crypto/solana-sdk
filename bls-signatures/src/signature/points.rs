@@ -259,7 +259,8 @@ impl SignatureProjective {
                     messages
                         .par_iter()
                         .map(|msg| {
-                            let hashed_message: G2Affine = hash_message_to_point(msg).into();
+                            let hashed_message: G2Affine =
+                                hash_signature_message_to_point(msg).into();
                             Ok::<_, BlsError>(G2Prepared::from(hashed_message))
                         })
                         .collect()
