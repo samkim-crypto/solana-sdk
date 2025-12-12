@@ -3,7 +3,7 @@ use crate::{
     proof_of_possession::ProofOfPossessionProjective,
     pubkey::{Pubkey, PubkeyProjective, VerifiablePubkey, BLS_PUBLIC_KEY_AFFINE_SIZE},
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
-    signature::{AsSignature, SignatureProjective},
+    signature::{AsSignatureAffine, SignatureProjective},
 };
 #[cfg(feature = "solana-signer-derive")]
 use solana_signer::Signer;
@@ -63,7 +63,11 @@ impl Keypair {
     }
 
     /// Verify a signature against a message and a public key
-    pub fn verify<S: AsSignature>(&self, signature: &S, message: &[u8]) -> Result<bool, BlsError> {
+    pub fn verify<S: AsSignatureAffine>(
+        &self,
+        signature: &S,
+        message: &[u8],
+    ) -> Result<bool, BlsError> {
         self.public.verify_signature(signature, message)
     }
 }

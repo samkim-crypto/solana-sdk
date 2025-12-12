@@ -1,8 +1,3 @@
-#[cfg(not(target_os = "solana"))]
-use crate::{
-    error::BlsError,
-    pubkey::points::{AsPubkeyAffine, PubkeyAffine},
-};
 #[cfg(feature = "bytemuck")]
 use bytemuck::{Pod, PodInOption, Zeroable, ZeroableInOption};
 use {

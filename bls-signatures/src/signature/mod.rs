@@ -7,9 +7,9 @@ pub use bytes::{
     BLS_SIGNATURE_COMPRESSED_BASE64_SIZE, BLS_SIGNATURE_COMPRESSED_SIZE,
 };
 #[cfg(not(target_os = "solana"))]
-pub use {
-    bytes::AsSignature,
-    points::{AsSignatureProjective, SignatureProjective, VerifiableSignature},
+pub use points::{
+    AsSignatureAffine, AsSignatureProjective, SignatureAffine, SignatureProjective,
+    VerifiableSignature,
 };
 
 #[cfg(test)]

@@ -69,7 +69,7 @@ impl SecretKey {
     #[allow(clippy::arithmetic_side_effects)]
     pub fn proof_of_possession(&self, payload: Option<&[u8]>) -> ProofOfPossessionProjective {
         let pubkey = PubkeyProjective::from_secret(self);
-        let hashed_point = hash_pubkey_to_g2(&pubkey, payload);
+        let hashed_point = hash_pubkey_to_g2(&pubkey.into(), payload);
         ProofOfPossessionProjective(hashed_point * self.0)
     }
 

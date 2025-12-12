@@ -89,6 +89,32 @@ macro_rules! impl_bls_conversions {
             }
         }
 
+        // Projective -> Uncompressed Bytes (Delegates to Affine)
+        impl From<&$projective> for $uncompressed {
+            fn from(p: &$projective) -> Self {
+                let affine = $affine::from(p);
+                affine.into()
+            }
+        }
+        impl From<$projective> for $uncompressed {
+            fn from(p: $projective) -> Self {
+                Self::from(&p)
+            }
+        }
+
+        // Projective -> Compressed Bytes (Delegates to Affine)
+        impl From<&$projective> for $compressed {
+            fn from(p: &$projective) -> Self {
+                let affine = $affine::from(p);
+                affine.into()
+            }
+        }
+        impl From<$projective> for $compressed {
+            fn from(p: $projective) -> Self {
+                Self::from(&p)
+            }
+        }
+
         // Uncompressed Bytes -> Affine Point
         impl TryFrom<&$uncompressed> for $affine {
             type Error = crate::error::BlsError;

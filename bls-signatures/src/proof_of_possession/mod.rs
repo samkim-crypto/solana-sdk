@@ -8,11 +8,9 @@ pub use bytes::{
     BLS_PROOF_OF_POSSESSION_COMPRESSED_SIZE,
 };
 #[cfg(not(target_os = "solana"))]
-pub use {
-    bytes::AsProofOfPossession,
-    points::{
-        AsProofOfPossessionProjective, ProofOfPossessionProjective, VerifiableProofOfPossession,
-    },
+pub use points::{
+    AsProofOfPossessionAffine, AsProofOfPossessionProjective, ProofOfPossessionAffine,
+    ProofOfPossessionProjective, VerifiableProofOfPossession,
 };
 
 /// Domain separation tag used when hashing public keys to G2 in the proof of

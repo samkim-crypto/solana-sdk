@@ -298,3 +298,16 @@ impl SignatureProjective {
 
 #[cfg(not(target_os = "solana"))]
 impl<T: AsSignatureProjective> VerifiableSignature for T {}
+
+/// A trait for types that can be converted into a `SignatureAffine`.
+#[cfg(not(target_os = "solana"))]
+pub trait AsSignatureAffine {
+    /// Attempt to convert the type into a `SignatureAffine`.
+    fn try_as_affine(&self) -> Result<SignatureAffine, BlsError>;
+}
+
+/// A BLS signature in an affine point representation.
+#[cfg(not(target_os = "solana"))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct SignatureAffine(pub(crate) G2Affine);

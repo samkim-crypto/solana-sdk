@@ -1,7 +1,7 @@
 #[cfg(not(target_os = "solana"))]
 use {
     crate::{error::BlsError, pubkey::VerifiablePubkey},
-    blstrs::G2Projective,
+    blstrs::{G2Affine, G2Projective},
 };
 
 /// A trait for types that can be converted into a `ProofOfPossessionProjective`.
@@ -32,3 +32,16 @@ pub struct ProofOfPossessionProjective(pub(crate) G2Projective);
 
 #[cfg(not(target_os = "solana"))]
 impl<T: AsProofOfPossessionProjective> VerifiableProofOfPossession for T {}
+
+/// A trait for types that can be converted into a `ProofOfPossessionAffine`.
+#[cfg(not(target_os = "solana"))]
+pub trait AsProofOfPossessionAffine {
+    /// Attempt to convert the type into a `ProofOfPossessionAffine`.
+    fn try_as_affine(&self) -> Result<ProofOfPossessionAffine, BlsError>;
+}
+
+/// A BLS proof of possession in an affine point representation.
+#[cfg(not(target_os = "solana"))]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct ProofOfPossessionAffine(pub(crate) G2Affine);

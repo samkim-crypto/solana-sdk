@@ -1,5 +1,5 @@
 use {
-    crate::{proof_of_possession::POP_DST, pubkey::PubkeyProjective},
+    crate::{proof_of_possession::POP_DST, pubkey::PubkeyAffine},
     blstrs::G2Projective,
 };
 
@@ -15,10 +15,7 @@ pub fn hash_message_to_point(message: &[u8]) -> G2Projective {
 }
 
 /// Hash a pubkey to a G2 point
-pub(crate) fn hash_pubkey_to_g2(
-    public_key: &PubkeyProjective,
-    payload: Option<&[u8]>,
-) -> G2Projective {
+pub(crate) fn hash_pubkey_to_g2(public_key: &PubkeyAffine, payload: Option<&[u8]>) -> G2Projective {
     if let Some(bytes) = payload {
         G2Projective::hash_to_curve(bytes, POP_DST, &[])
     } else {

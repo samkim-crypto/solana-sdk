@@ -1,14 +1,10 @@
 #[cfg(not(target_os = "solana"))]
 use {
-    crate::{
-        error::BlsError,
-        pubkey::{
-            bytes::{
-                Pubkey, PubkeyCompressed, BLS_PUBLIC_KEY_AFFINE_SIZE,
-                BLS_PUBLIC_KEY_COMPRESSED_SIZE,
-            },
-            points::{AsPubkeyAffine, AsPubkeyProjective, PubkeyAffine, PubkeyProjective},
+    crate::pubkey::{
+        bytes::{
+            Pubkey, PubkeyCompressed, BLS_PUBLIC_KEY_AFFINE_SIZE, BLS_PUBLIC_KEY_COMPRESSED_SIZE,
         },
+        points::{AsPubkeyAffine, AsPubkeyProjective, PubkeyAffine, PubkeyProjective},
     },
     blstrs::{G1Affine, G1Projective},
 };

@@ -7,9 +7,9 @@ use {
     crate::{
         error::BlsError,
         hash::{hash_message_to_point, hash_pubkey_to_g2},
-        proof_of_possession::{AsProofOfPossession, ProofOfPossession},
+        proof_of_possession::{AsProofOfPossessionAffine, ProofOfPossessionAffine},
         secret_key::SecretKey,
-        signature::{AsSignature, Signature},
+        signature::{AsSignatureAffine, SignatureAffine},
     },
     blstrs::{Bls12, G1Affine, G1Projective, G2Affine, G2Prepared, Gt},
     group::Group,
@@ -117,7 +117,7 @@ pub trait AsPubkeyAffine {
 #[cfg(not(target_os = "solana"))]
 pub trait VerifiablePubkey: AsPubkeyAffine {
     /// Uses this public key to verify any convertible signature type.
-    fn verify_signature<S: AsSignature>(
+    fn verify_signature<S: AsSignatureAffine>(
         &self,
         signature: &S,
         message: &[u8],
@@ -128,7 +128,7 @@ pub trait VerifiablePubkey: AsPubkeyAffine {
     }
 
     /// Uses this public key to verify any convertible proof of possession type.
-    fn verify_proof_of_possession<P: AsProofOfPossession>(
+    fn verify_proof_of_possession<P: AsProofOfPossessionAffine>(
         &self,
         proof: &P,
         payload: Option<&[u8]>,
@@ -151,19 +151,13 @@ pub struct PubkeyAffine(pub(crate) G1Affine);
 #[cfg(not(target_os = "solana"))]
 impl PubkeyAffine {
     /// Verify a signature and a message against a public key
-    pub(crate) fn _verify_signature(&self, signature: &Signature, message: &[u8]) -> bool {
-        let Some(signature_affine): Option<G2Affine> =
-            G2Affine::from_uncompressed(&signature.0).into()
-        else {
-            return false;
-        };
-
+    pub(crate) fn _verify_signature(&self, signature: &SignatureAffine, message: &[u8]) -> bool {
         // The verification equation is e(pubkey, H(m)) = e(g1, signature).
         // This can be rewritten as e(pubkey, H(m)) * e(-g1, signature) = 1, which
         // allows for a more efficient verification using a multi-miller loop.
         let hashed_message: G2Affine = hash_message_to_point(message).into();
         let hashed_message_prepared = G2Prepared::from(hashed_message);
-        let signature_prepared = G2Prepared::from(signature_affine);
+        let signature_prepared = G2Prepared::from(signature.0);
 
         // use the static valud if `std` is available, otherwise compute it
         #[cfg(feature = "std")]
@@ -183,25 +177,14 @@ impl PubkeyAffine {
     /// Verify a proof of possession against a public key
     pub(crate) fn _verify_proof_of_possession(
         &self,
-        proof: &ProofOfPossession,
+        proof: &ProofOfPossessionAffine,
         payload: Option<&[u8]>,
     ) -> bool {
-        let Some(proof_affine): Option<G2Affine> = G2Affine::from_uncompressed(&proof.0).into()
-        else {
-            return false;
-        };
-        // Dependency on conversion: PubkeyProjective::try_from(self)
-        // Since we are in the same crate, this circular logic works via the trait system,
-        // but explicit usage requires the trait or impl to be visible.
-        let Ok(pubkey_projective) = PubkeyProjective::try_from(self) else {
-            return false;
-        };
-
         // The verification equation is e(pubkey, H(pubkey)) == e(g1, proof).
         // This is rewritten to e(pubkey, H(pubkey)) * e(-g1, proof) = 1 for batching.
-        let hashed_pubkey_affine: G2Affine = hash_pubkey_to_g2(&pubkey_projective, payload).into();
+        let hashed_pubkey_affine: G2Affine = hash_pubkey_to_g2(self, payload).into();
         let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey_affine);
-        let proof_prepared = G2Prepared::from(proof_affine);
+        let proof_prepared = G2Prepared::from(proof.0);
 
         // Use the static value if std is available, otherwise compute it
         #[cfg(feature = "std")]
