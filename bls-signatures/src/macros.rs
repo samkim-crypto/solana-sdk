@@ -210,6 +210,40 @@ macro_rules! impl_bls_conversions {
             }
         }
 
+        // Bytes <-> Bytes Conversions (Transit via Affine)
+
+        // Uncompressed Bytes -> Compressed Bytes
+        impl TryFrom<&$uncompressed> for $compressed {
+            type Error = crate::error::BlsError;
+            fn try_from(bytes: &$uncompressed) -> Result<Self, Self::Error> {
+                // transit via Affine point: Bytes -> Affine -> Compressed
+                let point = $affine::try_from(bytes)?;
+                Ok(point.into())
+            }
+        }
+        impl TryFrom<$uncompressed> for $compressed {
+            type Error = crate::error::BlsError;
+            fn try_from(bytes: $uncompressed) -> Result<Self, Self::Error> {
+                Self::try_from(&bytes)
+            }
+        }
+
+        // Compressed Bytes -> Uncompressed Bytes
+        impl TryFrom<&$compressed> for $uncompressed {
+            type Error = crate::error::BlsError;
+            fn try_from(bytes: &$compressed) -> Result<Self, Self::Error> {
+                // transit via Affine point: Compressed -> Affine -> Uncompressed
+                let point = $affine::try_from(bytes)?;
+                Ok(point.into())
+            }
+        }
+        impl TryFrom<$compressed> for $uncompressed {
+            type Error = crate::error::BlsError;
+            fn try_from(bytes: $compressed) -> Result<Self, Self::Error> {
+                Self::try_from(&bytes)
+            }
+        }
+
         // Trait Implementations (AsProjective / AsAffine)
         // AsProjective
         impl $as_projective_trait for $projective {

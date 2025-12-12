@@ -1,7 +1,9 @@
 use crate::{
     error::BlsError,
     proof_of_possession::ProofOfPossessionProjective,
-    pubkey::{Pubkey, PubkeyProjective, VerifiablePubkey, BLS_PUBLIC_KEY_AFFINE_SIZE},
+    pubkey::{
+        Pubkey, PubkeyAffine, PubkeyProjective, VerifiablePubkey, BLS_PUBLIC_KEY_AFFINE_SIZE,
+    },
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::{AsSignatureAffine, SignatureProjective},
 };
@@ -25,7 +27,7 @@ pub const BLS_KEYPAIR_SIZE: usize = BLS_SECRET_KEY_SIZE + BLS_PUBLIC_KEY_AFFINE_
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Keypair {
     pub secret: SecretKey,
-    pub public: Pubkey,
+    pub public: PubkeyAffine,
 }
 
 impl Keypair {
@@ -78,14 +80,14 @@ impl TryFrom<&[u8]> for Keypair {
         if bytes.len() != BLS_KEYPAIR_SIZE {
             return Err(BlsError::ParseFromBytes);
         }
-        Ok(Self {
-            secret: SecretKey::try_from(&bytes[..BLS_SECRET_KEY_SIZE])?,
-            public: Pubkey(
-                bytes[BLS_SECRET_KEY_SIZE..]
-                    .try_into()
-                    .map_err(|_| BlsError::ParseFromBytes)?,
-            ),
-        })
+
+        let secret = SecretKey::try_from(&bytes[..BLS_SECRET_KEY_SIZE])?;
+        let pubkey_bytes: &[u8; BLS_PUBLIC_KEY_AFFINE_SIZE] = bytes[BLS_SECRET_KEY_SIZE..]
+            .try_into()
+            .map_err(|_| BlsError::ParseFromBytes)?;
+        let public = PubkeyAffine::try_from(pubkey_bytes)?;
+
+        Ok(Self { secret, public })
     }
 }
 
@@ -94,7 +96,8 @@ impl From<&Keypair> for [u8; BLS_KEYPAIR_SIZE] {
         let mut bytes = [0u8; BLS_KEYPAIR_SIZE];
         bytes[..BLS_SECRET_KEY_SIZE]
             .copy_from_slice(&Into::<[u8; BLS_SECRET_KEY_SIZE]>::into(&keypair.secret));
-        bytes[BLS_SECRET_KEY_SIZE..].copy_from_slice(&keypair.public.0);
+        let pubkey_bytes: Pubkey = (&keypair.public).into();
+        bytes[BLS_SECRET_KEY_SIZE..].copy_from_slice(&pubkey_bytes.0);
         bytes
     }
 }
