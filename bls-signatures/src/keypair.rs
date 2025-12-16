@@ -85,6 +85,11 @@ impl TryFrom<&[u8]> for Keypair {
             .map_err(|_| BlsError::ParseFromBytes)?;
         let public = PubkeyAffine::try_from(pubkey_bytes)?;
 
+        let expected_public: PubkeyAffine = PubkeyProjective::from_secret(&secret).into();
+        if expected_public != public {
+            return Err(BlsError::ParseFromBytes);
+        }
+
         Ok(Self { secret, public })
     }
 }
