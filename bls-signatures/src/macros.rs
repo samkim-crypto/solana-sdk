@@ -390,3 +390,47 @@ macro_rules! impl_bls_conversions {
         }
     };
 }
+
+#[cfg(not(target_os = "solana"))]
+macro_rules! impl_add_to_accumulator {
+    ($trait_name:ident, $accumulator_type:ident, $type:ty, affine) => {
+        impl $trait_name for $type {
+            #[allow(clippy::arithmetic_side_effects)]
+            fn add_to_accumulator(
+                &self,
+                acc: &mut $accumulator_type,
+            ) -> Result<(), crate::error::BlsError> {
+                // Efficient mixed addition (Projective += Affine)
+                acc.0 += self.0;
+                Ok(())
+            }
+        }
+    };
+    ($trait_name:ident, $accumulator_type:ident, $type:ty, projective) => {
+        impl $trait_name for $type {
+            #[allow(clippy::arithmetic_side_effects)]
+            fn add_to_accumulator(
+                &self,
+                acc: &mut $accumulator_type,
+            ) -> Result<(), crate::error::BlsError> {
+                // Projective += Projective
+                acc.0 += self.0;
+                Ok(())
+            }
+        }
+    };
+    ($trait_name:ident, $accumulator_type:ident, $type:ty, convert) => {
+        impl $trait_name for $type {
+            #[allow(clippy::arithmetic_side_effects)]
+            fn add_to_accumulator(
+                &self,
+                acc: &mut $accumulator_type,
+            ) -> Result<(), crate::error::BlsError> {
+                // Convert bytes to Affine first, then use mixed addition
+                let affine = self.try_as_affine()?;
+                acc.0 += affine.0;
+                Ok(())
+            }
+        }
+    };
+}

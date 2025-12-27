@@ -8,6 +8,7 @@ use {
         error::BlsError,
         hash::{hash_pop_payload_to_point, hash_signature_message_to_point},
         proof_of_possession::{AsProofOfPossessionAffine, ProofOfPossessionAffine},
+        pubkey::bytes::{Pubkey, PubkeyCompressed},
         secret_key::SecretKey,
         signature::{AsSignatureAffine, SignatureAffine},
     },
@@ -52,35 +53,37 @@ impl PubkeyProjective {
 
     /// Aggregate a list of public keys into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
-    pub fn aggregate_with<'a, P: AsPubkeyProjective + ?Sized + 'a>(
+    pub fn aggregate_with<'a, P: AddToPubkeyProjective + ?Sized + 'a>(
         &mut self,
         pubkeys: impl Iterator<Item = &'a P>,
     ) -> Result<(), BlsError> {
         for pubkey in pubkeys {
-            self.0 += pubkey.try_as_projective()?.0;
+            pubkey.add_to_accumulator(self)?;
         }
         Ok(())
     }
 
     /// Aggregate a list of public keys
     #[allow(clippy::arithmetic_side_effects)]
-    pub fn aggregate<'a, P: AsPubkeyProjective + ?Sized + 'a>(
-        mut pubkeys: impl Iterator<Item = &'a P>,
+    pub fn aggregate<'a, P: AddToPubkeyProjective + ?Sized + 'a>(
+        pubkeys: impl Iterator<Item = &'a P>,
     ) -> Result<PubkeyProjective, BlsError> {
-        match pubkeys.next() {
-            Some(first) => {
-                let mut aggregate = first.try_as_projective()?;
-                aggregate.aggregate_with(pubkeys)?;
-                Ok(aggregate)
-            }
-            None => Err(BlsError::EmptyAggregation),
+        let mut aggregate = PubkeyProjective::identity();
+        let mut count = 0;
+        for pubkey in pubkeys {
+            pubkey.add_to_accumulator(&mut aggregate)?;
+            count += 1;
         }
+        if count == 0 {
+            return Err(BlsError::EmptyAggregation);
+        }
+        Ok(aggregate)
     }
 
     /// Aggregate a list of public keys into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
-    pub fn par_aggregate_with<'a, P: AsPubkeyProjective + Sync + 'a>(
+    pub fn par_aggregate_with<'a, P: AddToPubkeyProjective + Sync + 'a>(
         &mut self,
         pubkeys: impl ParallelIterator<Item = &'a P>,
     ) -> Result<(), BlsError> {
@@ -92,15 +95,24 @@ impl PubkeyProjective {
     /// Aggregate a list of public keys
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
-    pub fn par_aggregate<'a, P: AsPubkeyProjective + Sync + 'a>(
+    pub fn par_aggregate<'a, P: AddToPubkeyProjective + Sync + 'a>(
         pubkeys: impl ParallelIterator<Item = &'a P>,
     ) -> Result<PubkeyProjective, BlsError> {
         pubkeys
             .into_par_iter()
-            .map(|key| key.try_as_projective())
-            .try_reduce_with(|mut a, b| {
-                a.0 += b.0;
-                Ok(a)
+            .fold(
+                || Ok(PubkeyProjective::identity()),
+                |acc, pubkey| {
+                    let mut acc = acc?;
+                    pubkey.add_to_accumulator(&mut acc)?;
+                    Ok(acc)
+                },
+            )
+            .reduce_with(|a, b| {
+                let mut a_val = a?;
+                let b_val = b?;
+                a_val.0 += b_val.0;
+                Ok(a_val)
             })
             .ok_or(BlsError::EmptyAggregation)?
     }
@@ -211,3 +223,45 @@ impl PubkeyAffine {
 
 #[cfg(not(target_os = "solana"))]
 impl<T: AsPubkeyAffine> VerifiablePubkey for T {}
+
+/// A trait for types that can be efficiently added to a PubkeyProjective accumulator.
+#[cfg(not(target_os = "solana"))]
+pub trait AddToPubkeyProjective {
+    /// Adds itself to the accumulator
+    fn add_to_accumulator(&self, acc: &mut PubkeyProjective) -> Result<(), BlsError>;
+}
+
+// Fallback for trait objects to support `dyn` types
+#[cfg(not(target_os = "solana"))]
+impl AddToPubkeyProjective for dyn AsPubkeyProjective {
+    #[allow(clippy::arithmetic_side_effects)]
+    fn add_to_accumulator(&self, acc: &mut PubkeyProjective) -> Result<(), BlsError> {
+        let proj = self.try_as_projective()?;
+        acc.0 += proj.0;
+        Ok(())
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToPubkeyProjective,
+    PubkeyProjective,
+    PubkeyAffine,
+    affine
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToPubkeyProjective,
+    PubkeyProjective,
+    PubkeyProjective,
+    projective
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(AddToPubkeyProjective, PubkeyProjective, Pubkey, convert);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToPubkeyProjective,
+    PubkeyProjective,
+    PubkeyCompressed,
+    convert
+);

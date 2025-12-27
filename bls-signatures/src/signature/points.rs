@@ -7,8 +7,8 @@ use {
     crate::{
         error::BlsError,
         hash::hash_signature_message_to_point,
-        pubkey::{AsPubkeyProjective, Pubkey, PubkeyProjective, VerifiablePubkey},
-        signature::bytes::Signature,
+        pubkey::{AddToPubkeyProjective, Pubkey, PubkeyProjective, VerifiablePubkey},
+        signature::bytes::{Signature, SignatureCompressed},
     },
     blstrs::{Bls12, G1Affine, G2Affine, G2Prepared, G2Projective, Gt},
     group::Group,
@@ -50,35 +50,38 @@ impl SignatureProjective {
 
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
-    pub fn aggregate_with<'a, S: AsSignatureProjective + ?Sized + 'a>(
+    pub fn aggregate_with<'a, S: AddToSignatureProjective + ?Sized + 'a>(
         &mut self,
         signatures: impl Iterator<Item = &'a S>,
     ) -> Result<(), BlsError> {
         for signature in signatures {
-            self.0 += signature.try_as_projective()?.0;
+            signature.add_to_accumulator(self)?;
         }
         Ok(())
     }
 
     /// Aggregate a list of signatures
-    pub fn aggregate<'a, S: AsSignatureProjective + ?Sized + 'a>(
-        mut signatures: impl Iterator<Item = &'a S>,
+    #[allow(clippy::arithmetic_side_effects)]
+    pub fn aggregate<'a, S: AddToSignatureProjective + ?Sized + 'a>(
+        signatures: impl Iterator<Item = &'a S>,
     ) -> Result<SignatureProjective, BlsError> {
-        match signatures.next() {
-            Some(first) => {
-                let mut aggregate = first.try_as_projective()?;
-                aggregate.aggregate_with(signatures)?;
-                Ok(aggregate)
-            }
-            None => Err(BlsError::EmptyAggregation),
+        let mut aggregate = SignatureProjective::identity();
+        let mut count = 0;
+        for signature in signatures {
+            signature.add_to_accumulator(&mut aggregate)?;
+            count += 1;
         }
+        if count == 0 {
+            return Err(BlsError::EmptyAggregation);
+        }
+        Ok(aggregate)
     }
 
     /// Verify a list of signatures against a message and a list of public keys
     pub fn verify_aggregate<
         'a,
-        P: AsPubkeyProjective + ?Sized + 'a,
-        S: AsSignatureProjective + ?Sized + 'a,
+        P: AddToPubkeyProjective + ?Sized + 'a,
+        S: AddToSignatureProjective + ?Sized + 'a,
     >(
         public_keys: impl Iterator<Item = &'a P>,
         signatures: impl Iterator<Item = &'a S>,
@@ -162,7 +165,7 @@ impl SignatureProjective {
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
-    pub fn par_aggregate_with<'a, S: AsSignatureProjective + Sync + 'a>(
+    pub fn par_aggregate_with<'a, S: AddToSignatureProjective + Sync + 'a>(
         &mut self,
         signatures: impl ParallelIterator<Item = &'a S>,
     ) -> Result<(), BlsError> {
@@ -174,22 +177,34 @@ impl SignatureProjective {
     /// Aggregate a list of signatures
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
-    pub fn par_aggregate<'a, S: AsSignatureProjective + Sync + 'a>(
+    pub fn par_aggregate<'a, S: AddToSignatureProjective + Sync + 'a>(
         signatures: impl ParallelIterator<Item = &'a S>,
     ) -> Result<SignatureProjective, BlsError> {
         signatures
             .into_par_iter()
-            .map(|sig| sig.try_as_projective())
-            .try_reduce_with(|mut a, b| {
-                a.0 += b.0;
-                Ok(a)
+            .fold(
+                || Ok(SignatureProjective::identity()),
+                |acc, signature| {
+                    let mut acc = acc?;
+                    signature.add_to_accumulator(&mut acc)?;
+                    Ok(acc)
+                },
+            )
+            .reduce_with(|a, b| {
+                let mut a_val = a?;
+                let b_val = b?;
+                a_val.0 += b_val.0;
+                Ok(a_val)
             })
             .ok_or(BlsError::EmptyAggregation)?
     }
 
     /// Verify a list of signatures against a message and a list of public keys
     #[cfg(feature = "parallel")]
-    pub fn par_verify_aggregate<P: AsPubkeyProjective + Sync, S: AsSignatureProjective + Sync>(
+    pub fn par_verify_aggregate<
+        P: AddToPubkeyProjective + Sync,
+        S: AddToSignatureProjective + Sync,
+    >(
         public_keys: &[P],
         signatures: &[S],
         message: &[u8],
@@ -310,3 +325,51 @@ pub trait AsSignatureAffine {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct SignatureAffine(pub(crate) G2Affine);
+
+/// A trait for types that can be efficiently added to a `SignatureProjective` accumulator.
+/// This enables Mixed Addition (Projective += Affine) optimization.
+#[cfg(not(target_os = "solana"))]
+pub trait AddToSignatureProjective {
+    /// Adds itself to the accumulator
+    fn add_to_accumulator(&self, acc: &mut SignatureProjective) -> Result<(), BlsError>;
+}
+
+// Fallback for trait objects to support `dyn` types
+#[cfg(not(target_os = "solana"))]
+impl AddToSignatureProjective for dyn AsSignatureProjective {
+    #[allow(clippy::arithmetic_side_effects)]
+    fn add_to_accumulator(&self, acc: &mut SignatureProjective) -> Result<(), BlsError> {
+        let proj = self.try_as_projective()?;
+        acc.0 += proj.0;
+        Ok(())
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    SignatureAffine,
+    affine
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    SignatureProjective,
+    projective
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    Signature,
+    convert
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    SignatureCompressed,
+    convert
+);

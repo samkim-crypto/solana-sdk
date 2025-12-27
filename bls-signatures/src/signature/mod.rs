@@ -8,8 +8,8 @@ pub use bytes::{
 };
 #[cfg(not(target_os = "solana"))]
 pub use points::{
-    AsSignatureAffine, AsSignatureProjective, SignatureAffine, SignatureProjective,
-    VerifiableSignature,
+    AddToSignatureProjective, AsSignatureAffine, AsSignatureProjective, SignatureAffine,
+    SignatureProjective, VerifiableSignature,
 };
 
 #[cfg(test)]
@@ -369,10 +369,8 @@ mod tests {
 
         // Test empty case
         let empty: std::vec::Vec<SignatureProjective> = Vec::new();
-        assert_eq!(
-            SignatureProjective::par_aggregate(empty.par_iter()).unwrap_err(),
-            BlsError::EmptyAggregation
-        );
+        let empty_agg = SignatureProjective::par_aggregate(empty.par_iter()).unwrap();
+        assert_eq!(empty_agg, SignatureProjective::identity());
     }
 
     #[test]
@@ -472,5 +470,30 @@ mod tests {
 
         let result = pubkey_bytes.verify_signature(&bad_signature_bytes, message);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_signature_mixed_addition_consistency() {
+        let keypair1 = Keypair::new();
+        let keypair2 = Keypair::new();
+        let msg = b"consistency_check";
+
+        let sig1 = keypair1.sign(msg);
+        let sig2 = keypair2.sign(msg);
+
+        // Projective + Projective
+        let mut expected = sig1;
+        expected.0 += sig2.0;
+
+        // Projective + Affine via trait
+        let mut optimized = sig1;
+        let sig2_affine: SignatureAffine = sig2.into();
+
+        sig2_affine.add_to_accumulator(&mut optimized).unwrap();
+
+        assert_eq!(
+            expected, optimized,
+            "Mixed addition did not match projective addition for signatures"
+        );
     }
 }

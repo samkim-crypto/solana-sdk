@@ -2,8 +2,8 @@ use {
     criterion::{criterion_group, criterion_main, Criterion},
     solana_bls_signatures::{
         keypair::Keypair,
-        pubkey::{Pubkey, PubkeyProjective, VerifiablePubkey},
-        signature::{Signature, SignatureProjective},
+        pubkey::{Pubkey, PubkeyAffine, PubkeyProjective, VerifiablePubkey},
+        signature::{Signature, SignatureAffine, SignatureProjective},
     },
     std::hint::black_box,
 };
@@ -33,13 +33,12 @@ fn bench_aggregate(c: &mut Criterion) {
         let message = b"test message";
         let keypairs: Vec<Keypair> = (0..*num_validators).map(|_| Keypair::new()).collect();
 
-        let pubkeys: Vec<PubkeyProjective> = keypairs
-            .iter()
-            .map(|kp| PubkeyProjective::from(&kp.public))
-            .collect();
+        let pubkeys: Vec<PubkeyAffine> = keypairs.iter().map(|kp| kp.public).collect();
 
-        let signatures: Vec<SignatureProjective> =
-            keypairs.iter().map(|kp| kp.sign(message)).collect();
+        let signatures: Vec<SignatureAffine> = keypairs
+            .iter()
+            .map(|kp| SignatureAffine::from(kp.sign(message)))
+            .collect();
 
         // Benchmark for aggregating multiple signatures
         group.bench_function(format!("{num_validators} signature aggregation"), |b| {
@@ -49,7 +48,7 @@ fn bench_aggregate(c: &mut Criterion) {
         #[cfg(feature = "parallel")]
         {
             // Create references for parallel benchmark
-            let signature_refs: Vec<&SignatureProjective> = signatures.iter().collect();
+            let signature_refs: Vec<&SignatureAffine> = signatures.iter().collect();
 
             group.bench_function(
                 format!("{num_validators} parallel signature aggregation"),
