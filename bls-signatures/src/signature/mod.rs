@@ -284,7 +284,12 @@ mod tests {
         .unwrap_err();
         assert_eq!(err, BlsError::InputLengthMismatch);
 
-        let err = SignatureProjective::verify_distinct(empty(), empty(), empty()).unwrap_err();
+        let err = SignatureProjective::verify_distinct(
+            empty::<&Pubkey>(),
+            empty::<&Signature>(),
+            empty(),
+        )
+        .unwrap_err();
         assert_eq!(err, BlsError::EmptyAggregation);
     }
 
