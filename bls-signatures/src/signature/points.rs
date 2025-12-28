@@ -28,7 +28,7 @@ pub trait AsSignatureProjective {
 #[cfg(not(target_os = "solana"))]
 pub trait VerifiableSignature: AsSignatureAffine + Sized {
     /// Verify the signature against any convertible public key type and a message.
-    fn verify<P: VerifiablePubkey>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError> {
+    fn verify<P: VerifiablePubkey>(&self, pubkey: &P, message: &[u8]) -> Result<(), BlsError> {
         pubkey.verify_signature(self, message)
     }
 }
@@ -86,7 +86,7 @@ impl SignatureProjective {
         public_keys: impl Iterator<Item = &'a P>,
         signatures: impl Iterator<Item = &'a S>,
         message: &[u8],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         let aggregate_pubkey = PubkeyProjective::aggregate(public_keys)?;
         let aggregate_signature = SignatureProjective::aggregate(signatures)?;
 
@@ -99,7 +99,7 @@ impl SignatureProjective {
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         signatures: impl ExactSizeIterator<Item = &'a S>,
         messages: impl ExactSizeIterator<Item = &'a [u8]>,
-    ) -> Result<bool, BlsError>
+    ) -> Result<(), BlsError>
     where
         P: AsPubkeyAffine + 'a + ?Sized,
         S: AddToSignatureProjective + 'a + ?Sized,
@@ -120,7 +120,7 @@ impl SignatureProjective {
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         aggregate_signature: &S,
         messages: impl ExactSizeIterator<Item = &'a [u8]>,
-    ) -> Result<bool, BlsError>
+    ) -> Result<(), BlsError>
     where
         P: AsPubkeyAffine + 'a + ?Sized,
         S: AsSignatureAffine + ?Sized,
@@ -163,7 +163,9 @@ impl SignatureProjective {
         terms.push((neg_g1_generator, &signature_prepared));
 
         let miller_loop_result = Bls12::multi_miller_loop(&terms);
-        Ok(miller_loop_result.final_exponentiation() == Gt::identity())
+        (miller_loop_result.final_exponentiation() == Gt::identity())
+            .then_some(())
+            .ok_or(BlsError::VerificationFailed)
     }
 
     /// Aggregate a list of signatures into an existing aggregate
@@ -212,7 +214,7 @@ impl SignatureProjective {
         public_keys: &[P],
         signatures: &[S],
         message: &[u8],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         if public_keys.len() != signatures.len() {
             return Err(BlsError::InputLengthMismatch);
         }
@@ -233,7 +235,7 @@ impl SignatureProjective {
         public_keys: &[P],
         signatures: &[S],
         messages: &[&[u8]],
-    ) -> Result<bool, BlsError>
+    ) -> Result<(), BlsError>
     where
         P: AsPubkeyAffine + Sync,
         S: AddToSignatureProjective + Sync,
@@ -255,7 +257,7 @@ impl SignatureProjective {
         public_keys: &[P],
         aggregate_signature: &S,
         messages: &[&[u8]],
-    ) -> Result<bool, BlsError>
+    ) -> Result<(), BlsError>
     where
         P: AsPubkeyAffine + Sync,
         S: AsSignatureAffine + Sync,
@@ -314,7 +316,9 @@ impl SignatureProjective {
         terms.push((neg_g1_generator, &signature_prepared));
 
         let miller_loop_result = Bls12::multi_miller_loop(&terms);
-        Ok(miller_loop_result.final_exponentiation() == Gt::identity())
+        (miller_loop_result.final_exponentiation() == Gt::identity())
+            .then_some(())
+            .ok_or(BlsError::VerificationFailed)
     }
 }
 

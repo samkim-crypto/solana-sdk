@@ -133,10 +133,13 @@ pub trait VerifiablePubkey: AsPubkeyAffine {
         &self,
         signature: &S,
         message: &[u8],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         let pubkey_affine = self.try_as_affine()?;
         let signature_affine = signature.try_as_affine()?;
-        Ok(pubkey_affine._verify_signature(&signature_affine, message))
+        pubkey_affine
+            ._verify_signature(&signature_affine, message)
+            .then_some(())
+            .ok_or(BlsError::VerificationFailed)
     }
 
     /// Uses this public key to verify any convertible proof of possession type.
@@ -144,10 +147,13 @@ pub trait VerifiablePubkey: AsPubkeyAffine {
         &self,
         proof: &P,
         payload: Option<&[u8]>,
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         let pubkey_affine = self.try_as_affine()?;
         let proof_affine = proof.try_as_affine()?;
-        Ok(pubkey_affine._verify_proof_of_possession(&proof_affine, payload))
+        pubkey_affine
+            ._verify_proof_of_possession(&proof_affine, payload)
+            .then_some(())
+            .ok_or(BlsError::VerificationFailed)
     }
 }
 

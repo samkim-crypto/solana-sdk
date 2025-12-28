@@ -89,15 +89,12 @@ fn bench_aggregate(c: &mut Criterion) {
             format!("{num_validators} sequential aggregate verification"),
             |b| {
                 b.iter(|| {
-                    let verification_result = black_box(
-                        SignatureProjective::verify_aggregate(
-                            pubkeys.iter(),
-                            signatures.iter(),
-                            message,
-                        )
-                        .unwrap(),
-                    );
-                    assert!(verification_result);
+                    SignatureProjective::verify_aggregate(
+                        pubkeys.iter(),
+                        signatures.iter(),
+                        message,
+                    )
+                    .unwrap();
                 });
             },
         );
@@ -107,11 +104,8 @@ fn bench_aggregate(c: &mut Criterion) {
             format!("{num_validators} parallel aggregate verification"),
             |b| {
                 b.iter(|| {
-                    let verification_result = black_box(
-                        SignatureProjective::par_verify_aggregate(&pubkeys, &signatures, message)
-                            .unwrap(),
-                    );
-                    assert!(verification_result);
+                    SignatureProjective::par_verify_aggregate(&pubkeys, &signatures, message)
+                        .unwrap();
                 });
             },
         );
@@ -164,15 +158,12 @@ fn bench_batch_verification(c: &mut Criterion) {
             format!("{num_validators} sequential batch verification"),
             |b| {
                 b.iter(|| {
-                    let verification_result = black_box(
-                        SignatureProjective::verify_distinct(
-                            pubkeys.iter(),
-                            signatures.iter(),
-                            messages.iter().map(Vec::as_slice),
-                        )
-                        .unwrap(),
-                    );
-                    assert!(verification_result);
+                    SignatureProjective::verify_distinct(
+                        pubkeys.iter(),
+                        signatures.iter(),
+                        messages.iter().map(Vec::as_slice),
+                    )
+                    .unwrap();
                 });
             },
         );
@@ -185,15 +176,12 @@ fn bench_batch_verification(c: &mut Criterion) {
                 format!("{num_validators} parallel batch verification"),
                 |b| {
                     b.iter(|| {
-                        let verification_result = black_box(
-                            SignatureProjective::par_verify_distinct(
-                                &pubkeys,
-                                &signatures,
-                                &message_refs,
-                            )
-                            .unwrap(),
-                        );
-                        assert!(verification_result);
+                        SignatureProjective::par_verify_distinct(
+                            &pubkeys,
+                            &signatures,
+                            &message_refs,
+                        )
+                        .unwrap();
                     });
                 },
             );

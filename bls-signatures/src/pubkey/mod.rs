@@ -48,58 +48,58 @@ mod tests {
         // Verify with PubkeyProjective
         assert!(pubkey_projective
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyAffine
         assert!(pubkey_affine
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with Pubkey (Uncompressed Bytes)
         assert!(pubkey_uncompressed
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyCompressed (Compressed Bytes)
         assert!(pubkey_compressed
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
     }
 
     #[test]
@@ -119,58 +119,58 @@ mod tests {
         // Verify with PubkeyProjective
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyAffine
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
 
         // Verify with Pubkey (Uncompressed)
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyCompressed
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
     }
 
     #[test]

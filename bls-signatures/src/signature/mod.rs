@@ -48,58 +48,58 @@ mod tests {
         // Verify with PubkeyProjective
         assert!(pubkey_projective
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyAffine
         assert!(pubkey_affine
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with Pubkey (Uncompressed Bytes)
         assert!(pubkey_uncompressed
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyCompressed (Compressed Bytes)
         assert!(pubkey_compressed
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
     }
 
     #[test]
@@ -130,20 +130,20 @@ mod tests {
         assert!(keypair0
             .public
             .verify_signature(&signature0, test_message)
-            .unwrap());
+            .is_ok());
         let keypair1 = Keypair::new();
         let signature1 = keypair1.secret.sign(test_message);
         assert!(keypair1
             .public
             .verify_signature(&signature1, test_message)
-            .unwrap());
+            .is_ok());
         // basic case
         assert!(SignatureProjective::verify_aggregate(
             [&keypair0.public, &keypair1.public].into_iter(),
             [&signature0, &signature1].into_iter(),
             test_message,
         )
-        .unwrap());
+        .is_ok());
         // verify with affine and compressed types
         let pubkey0_affine: PubkeyAffine = keypair0.public;
         let pubkey1_affine: PubkeyAffine = keypair1.public;
@@ -154,7 +154,7 @@ mod tests {
             [&signature0_affine, &signature1_affine].into_iter(),
             test_message,
         )
-        .unwrap());
+        .is_ok());
         // pre-aggregate the signatures
         let aggregate_signature =
             SignatureProjective::aggregate([&signature0, &signature1].into_iter()).unwrap();
@@ -163,7 +163,7 @@ mod tests {
             [&aggregate_signature].into_iter(),
             test_message,
         )
-        .unwrap());
+        .is_ok());
         // pre-aggregate the public keys
         let aggregate_pubkey =
             PubkeyProjective::aggregate([&keypair0.public, &keypair1.public].into_iter()).unwrap();
@@ -172,7 +172,7 @@ mod tests {
             [&signature0, &signature1].into_iter(),
             test_message,
         )
-        .unwrap());
+        .is_ok());
         let pubkeys = Vec::new() as Vec<PubkeyProjective>;
 
         // empty set of public keys or signatures
@@ -226,24 +226,24 @@ mod tests {
             signatures.iter(),
             messages.iter().cloned()
         )
-        .unwrap());
+        .is_ok());
 
         // Failure cases
         let wrong_order_messages: Vec<&[u8]> = std::vec![message1, message0, message2];
-        assert!(!SignatureProjective::verify_distinct(
+        assert!(SignatureProjective::verify_distinct(
             pubkeys.iter(),
             signatures.iter(),
             wrong_order_messages.into_iter()
         )
-        .unwrap());
+        .is_err());
 
         let one_wrong_message_refs: Vec<&[u8]> = std::vec![message0, b"this is wrong", message2];
-        assert!(!SignatureProjective::verify_distinct(
+        assert!(SignatureProjective::verify_distinct(
             pubkeys.iter(),
             signatures.iter(),
             one_wrong_message_refs.into_iter()
         )
-        .unwrap());
+        .is_err());
 
         let wrong_keypair = Keypair::new();
         let wrong_pubkeys = [
@@ -251,22 +251,22 @@ mod tests {
             Pubkey::from(wrong_keypair.public),
             Pubkey::from(keypair2.public),
         ];
-        assert!(!SignatureProjective::verify_distinct(
+        assert!(SignatureProjective::verify_distinct(
             wrong_pubkeys.iter(),
             signatures.iter(),
             messages.iter().cloned()
         )
-        .unwrap());
+        .is_err());
 
         let wrong_signature_proj = wrong_keypair.sign(message1);
         let wrong_signature: Signature = wrong_signature_proj.into();
         let wrong_signatures = [signature0, wrong_signature, signature2];
-        assert!(!SignatureProjective::verify_distinct(
+        assert!(SignatureProjective::verify_distinct(
             pubkeys.iter(),
             wrong_signatures.iter(),
             messages.iter().cloned()
         )
-        .unwrap());
+        .is_err());
 
         let err = SignatureProjective::verify_distinct(
             pubkeys.iter(),
@@ -321,19 +321,19 @@ mod tests {
             dyn_signatures.into_iter(),
             test_message
         )
-        .unwrap());
+        .is_ok());
 
         let wrong_message = b"this is not the correct message";
         let dyn_pubkeys_fail: Vec<&dyn AsPubkeyProjective> =
             std::vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
         let dyn_signatures_fail: Vec<&dyn AsSignatureProjective> =
             std::vec![&signature0, &signature1_affine, &signature2_compressed];
-        assert!(!SignatureProjective::verify_aggregate(
+        assert!(SignatureProjective::verify_aggregate(
             dyn_pubkeys_fail.into_iter(),
             dyn_signatures_fail.into_iter(),
             wrong_message
         )
-        .unwrap());
+        .is_err());
     }
 
     #[test]
@@ -390,7 +390,7 @@ mod tests {
         let signatures: Vec<_> = keypairs.iter().map(|kp| kp.sign(message)).collect();
 
         // Success case
-        assert!(SignatureProjective::par_verify_aggregate(&pubkeys, &signatures, message).unwrap());
+        assert!(SignatureProjective::par_verify_aggregate(&pubkeys, &signatures, message).is_ok());
 
         // Failure case (wrong message)
         assert!(!SignatureProjective::par_verify_aggregate(
@@ -398,13 +398,13 @@ mod tests {
             &signatures,
             b"wrong message"
         )
-        .unwrap());
+        .is_ok());
 
         // Failure case (bad signature)
         let mut bad_signatures = signatures.clone();
         bad_signatures[0] = keypairs[0].sign(b"a different message");
         assert!(
-            !SignatureProjective::par_verify_aggregate(&pubkeys, &bad_signatures, message).unwrap()
+            !SignatureProjective::par_verify_aggregate(&pubkeys, &bad_signatures, message).is_ok()
         );
     }
 
@@ -437,8 +437,7 @@ mod tests {
         let signatures = [signature0, signature1, signature2];
 
         assert!(
-            SignatureProjective::par_verify_distinct(&pubkeys, &signatures, &messages_refs)
-                .unwrap()
+            SignatureProjective::par_verify_distinct(&pubkeys, &signatures, &messages_refs).is_ok()
         );
     }
 
@@ -453,14 +452,14 @@ mod tests {
 
         assert!(pubkey_bytes
             .verify_signature(&signature_bytes, message)
-            .unwrap());
+            .is_ok());
         assert!(keypair
             .public
             .verify_signature(&signature_bytes, message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_bytes
             .verify_signature(&signature_bytes, message)
-            .unwrap());
+            .is_ok());
 
         // malleable public key
         let mut bad_pubkey_bytes = pubkey_bytes;

@@ -67,7 +67,7 @@ impl Keypair {
         &self,
         signature: &S,
         message: &[u8],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         self.public.verify_signature(signature, message)
     }
 }
