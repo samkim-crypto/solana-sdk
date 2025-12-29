@@ -1,5 +1,10 @@
 #[cfg(all(not(target_os = "solana"), feature = "std"))]
 use crate::pubkey::points::NEG_G1_GENERATOR_AFFINE;
+#[cfg(all(
+    not(target_os = "solana"),
+    any(feature = "parallel", not(feature = "std"))
+))]
+use blstrs::G1Affine;
 #[cfg(not(feature = "std"))]
 use blstrs::G1Projective;
 #[cfg(not(target_os = "solana"))]
@@ -15,7 +20,7 @@ use {
     pairing::{MillerLoopResult, MultiMillerLoop},
 };
 #[cfg(all(feature = "parallel", not(target_os = "solana")))]
-use {alloc::vec::Vec, blstrs::G1Affine, rayon::prelude::*};
+use {alloc::vec::Vec, rayon::prelude::*};
 
 /// A trait for types that can be converted into a `SignatureProjective`.
 #[cfg(not(target_os = "solana"))]
