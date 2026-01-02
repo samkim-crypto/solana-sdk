@@ -22,6 +22,7 @@ all_crate_dirs=(
   commitment-config
   compute-budget-interface
   cpi
+  curve25519
   define-syscall
   derivation-path
   ed25519-program
