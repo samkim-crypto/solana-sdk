@@ -914,6 +914,7 @@ dependencies = [
  "fiat-crypto",
  "rand_core 0.6.4",
  "rustc_version",
+ "serde",
  "subtle",
  "zeroize",
 ]
@@ -3171,6 +3172,18 @@ dependencies = [
  "solana-stable-layout",
  "solana-system-interface",
  "static_assertions",
+]
+
+[[package]]
+name = "solana-curve25519"
+version = "3.1.5"
+dependencies = [
+ "bytemuck",
+ "bytemuck_derive",
+ "curve25519-dalek",
+ "solana-define-syscall",
+ "subtle",
+ "thiserror 2.0.17",
 ]
 
 [[package]]

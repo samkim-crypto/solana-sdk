@@ -18,6 +18,7 @@ members = [
     "commitment-config",
     "compute-budget-interface",
     "cpi",
+    "curve25519",
     "define-syscall",
     "derivation-path",
     "ed25519-program",
@@ -237,6 +238,7 @@ solana-cluster-type = { path = "cluster-type", version = "3.0.0" }
 solana-commitment-config = { path = "commitment-config", version = "3.0.0" }
 solana-compute-budget-interface = { path = "compute-budget-interface", version = "3.0.0" }
 solana-cpi = { path = "cpi", version = "3.0.0" }
+solana-curve25519 = { path = "curve25519", version = "3.0.0" }
 solana-define-syscall = { path = "define-syscall", version = "4.0.0" }
 solana-derivation-path = { path = "derivation-path", version = "3.0.0" }
 solana-ed25519-program = { path = "ed25519-program", version = "3.0.0" }
