@@ -59,6 +59,7 @@ all_crate_dirs=(
   package-metadata-macro
   packet
   poh-config
+  poseidon
   precompile-error
   presigner
   program
