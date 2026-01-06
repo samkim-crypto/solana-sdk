@@ -16,6 +16,8 @@ pub enum BlsError {
     ParseFromBytes,
     #[error("The length of inputs do not match")]
     InputLengthMismatch,
+    #[error("Cryptographic verification failed")]
+    VerificationFailed,
 }
 
 impl From<Infallible> for BlsError {

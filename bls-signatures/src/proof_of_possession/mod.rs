@@ -45,30 +45,30 @@ mod tests {
         let proof_compressed: ProofOfPossessionCompressed = proof_affine.into(); // [u8; 48]
 
         // Verify with PubkeyProjective
-        assert!(proof_projective.verify(&pubkey_projective, None).unwrap());
-        assert!(proof_affine.verify(&pubkey_projective, None).unwrap());
-        assert!(proof_uncompressed.verify(&pubkey_projective, None).unwrap());
-        assert!(proof_compressed.verify(&pubkey_projective, None).unwrap());
+        assert!(proof_projective.verify(&pubkey_projective, None).is_ok());
+        assert!(proof_affine.verify(&pubkey_projective, None).is_ok());
+        assert!(proof_uncompressed.verify(&pubkey_projective, None).is_ok());
+        assert!(proof_compressed.verify(&pubkey_projective, None).is_ok());
 
         // Verify with PubkeyAffine
-        assert!(proof_projective.verify(&pubkey_affine, None).unwrap());
-        assert!(proof_affine.verify(&pubkey_affine, None).unwrap());
-        assert!(proof_uncompressed.verify(&pubkey_affine, None).unwrap());
-        assert!(proof_compressed.verify(&pubkey_affine, None).unwrap());
+        assert!(proof_projective.verify(&pubkey_affine, None).is_ok());
+        assert!(proof_affine.verify(&pubkey_affine, None).is_ok());
+        assert!(proof_uncompressed.verify(&pubkey_affine, None).is_ok());
+        assert!(proof_compressed.verify(&pubkey_affine, None).is_ok());
 
         // Verify with Pubkey (Uncompressed Bytes)
-        assert!(proof_projective.verify(&pubkey_uncompressed, None).unwrap());
-        assert!(proof_affine.verify(&pubkey_uncompressed, None).unwrap());
+        assert!(proof_projective.verify(&pubkey_uncompressed, None).is_ok());
+        assert!(proof_affine.verify(&pubkey_uncompressed, None).is_ok());
         assert!(proof_uncompressed
             .verify(&pubkey_uncompressed, None)
-            .unwrap());
-        assert!(proof_compressed.verify(&pubkey_uncompressed, None).unwrap());
+            .is_ok());
+        assert!(proof_compressed.verify(&pubkey_uncompressed, None).is_ok());
 
         // Verify with PubkeyCompressed (Compressed Bytes)
-        assert!(proof_projective.verify(&pubkey_compressed, None).unwrap());
-        assert!(proof_affine.verify(&pubkey_compressed, None).unwrap());
-        assert!(proof_uncompressed.verify(&pubkey_compressed, None).unwrap());
-        assert!(proof_compressed.verify(&pubkey_compressed, None).unwrap());
+        assert!(proof_projective.verify(&pubkey_compressed, None).is_ok());
+        assert!(proof_affine.verify(&pubkey_compressed, None).is_ok());
+        assert!(proof_uncompressed.verify(&pubkey_compressed, None).is_ok());
+        assert!(proof_compressed.verify(&pubkey_compressed, None).is_ok());
     }
 
     #[test]
@@ -127,19 +127,19 @@ mod tests {
         assert!(keypair
             .public
             .verify_proof_of_possession(&proof_custom, Some(custom_payload))
-            .unwrap());
+            .is_ok());
 
-        assert!(!keypair
+        assert!(keypair
             .public
             .verify_proof_of_possession(&proof_custom, None) // try verify with `None`
-            .unwrap());
+            .is_err());
 
         let wrong_payload = b"wrong-context";
-        assert!(!keypair
+        assert!(keypair
             .public
             // try verify with wrong payload
             .verify_proof_of_possession(&proof_custom, Some(wrong_payload))
-            .unwrap());
+            .is_err());
 
         // verify standard PoP behavior
         let proof_standard = keypair.proof_of_possession(None);
@@ -147,12 +147,12 @@ mod tests {
         assert!(keypair
             .public
             .verify_proof_of_possession(&proof_standard, None)
-            .unwrap());
+            .is_ok());
         // standard fails with custom payload
-        assert!(!keypair
+        assert!(keypair
             .public
             .verify_proof_of_possession(&proof_standard, Some(custom_payload))
-            .unwrap());
+            .is_err());
     }
 
     #[test]
@@ -164,11 +164,11 @@ mod tests {
 
         assert!(pubkey_bytes
             .verify_proof_of_possession(&pop_bytes, None)
-            .unwrap());
+            .is_ok());
         assert!(keypair
             .public
             .verify_proof_of_possession(&pop_bytes, None)
-            .unwrap());
+            .is_ok());
 
         // malleable public key
         let mut bad_pubkey_bytes = pubkey_bytes;

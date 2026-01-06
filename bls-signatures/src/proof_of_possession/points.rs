@@ -19,7 +19,7 @@ pub trait VerifiableProofOfPossession: AsProofOfPossessionAffine + Sized {
         &self,
         pubkey: &P,
         payload: Option<&[u8]>,
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         pubkey.verify_proof_of_possession(self, payload)
     }
 }

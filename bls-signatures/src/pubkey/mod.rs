@@ -8,7 +8,8 @@ pub use bytes::{
 };
 #[cfg(not(target_os = "solana"))]
 pub use points::{
-    AsPubkeyAffine, AsPubkeyProjective, PubkeyAffine, PubkeyProjective, VerifiablePubkey,
+    AddToPubkeyProjective, AsPubkeyAffine, AsPubkeyProjective, PubkeyAffine, PubkeyProjective,
+    VerifiablePubkey,
 };
 
 #[cfg(test)]
@@ -47,58 +48,58 @@ mod tests {
         // Verify with PubkeyProjective
         assert!(pubkey_projective
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyAffine
         assert!(pubkey_affine
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with Pubkey (Uncompressed Bytes)
         assert!(pubkey_uncompressed
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyCompressed (Compressed Bytes)
         assert!(pubkey_compressed
             .verify_signature(&signature_projective, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_affine, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_uncompressed, test_message)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_signature(&signature_compressed, test_message)
-            .unwrap());
+            .is_ok());
     }
 
     #[test]
@@ -118,58 +119,58 @@ mod tests {
         // Verify with PubkeyProjective
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_projective
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyAffine
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_affine
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
 
         // Verify with Pubkey (Uncompressed)
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_uncompressed
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
 
         // Verify with PubkeyCompressed
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_projective, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_affine, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_uncompressed, None)
-            .unwrap());
+            .is_ok());
         assert!(pubkey_compressed
             .verify_proof_of_possession(&proof_compressed, None)
-            .unwrap());
+            .is_ok());
     }
 
     #[test]
@@ -260,10 +261,8 @@ mod tests {
 
         // Test empty case
         let empty: std::vec::Vec<PubkeyProjective> = std::vec![];
-        assert_eq!(
-            PubkeyProjective::par_aggregate(empty.par_iter()).unwrap_err(),
-            BlsError::EmptyAggregation
-        );
+        let empty_agg = PubkeyProjective::par_aggregate(empty.par_iter()).unwrap();
+        assert_eq!(empty_agg, PubkeyProjective::identity());
     }
 
     #[test]
@@ -283,6 +282,30 @@ mod tests {
         assert_eq!(
             PubkeyProjective::try_from(pubkey_short_bytes).unwrap_err(),
             BlsError::ParseFromBytes
+        );
+    }
+
+    #[test]
+    fn test_pubkey_mixed_addition_consistency() {
+        let keypair1 = Keypair::new();
+        let keypair2 = Keypair::new();
+
+        let pk1: PubkeyProjective = keypair1.public.into();
+        let pk2: PubkeyProjective = keypair2.public.into();
+
+        // Projective + Projective
+        let mut expected = pk1;
+        expected.0 += pk2.0;
+
+        // Projective + Affine via trait
+        let mut optimized = pk1;
+        let pk2_affine: PubkeyAffine = keypair2.public; // Already affine
+
+        pk2_affine.add_to_accumulator(&mut optimized).unwrap();
+
+        assert_eq!(
+            expected, optimized,
+            "Mixed addition did not match projective addition for pubkeys"
         );
     }
 }

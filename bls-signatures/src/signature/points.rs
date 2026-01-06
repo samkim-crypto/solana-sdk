@@ -1,5 +1,10 @@
 #[cfg(all(not(target_os = "solana"), feature = "std"))]
 use crate::pubkey::points::NEG_G1_GENERATOR_AFFINE;
+#[cfg(all(
+    not(target_os = "solana"),
+    any(feature = "parallel", not(feature = "std"))
+))]
+use blstrs::G1Affine;
 #[cfg(not(feature = "std"))]
 use blstrs::G1Projective;
 #[cfg(not(target_os = "solana"))]
@@ -7,10 +12,10 @@ use {
     crate::{
         error::BlsError,
         hash::hash_signature_message_to_point,
-        pubkey::{AsPubkeyProjective, Pubkey, PubkeyProjective, VerifiablePubkey},
-        signature::bytes::Signature,
+        pubkey::{AddToPubkeyProjective, AsPubkeyAffine, PubkeyProjective, VerifiablePubkey},
+        signature::bytes::{Signature, SignatureCompressed},
     },
-    blstrs::{Bls12, G1Affine, G2Affine, G2Prepared, G2Projective, Gt},
+    blstrs::{Bls12, G2Affine, G2Prepared, G2Projective, Gt},
     group::Group,
     pairing::{MillerLoopResult, MultiMillerLoop},
 };
@@ -28,7 +33,7 @@ pub trait AsSignatureProjective {
 #[cfg(not(target_os = "solana"))]
 pub trait VerifiableSignature: AsSignatureAffine + Sized {
     /// Verify the signature against any convertible public key type and a message.
-    fn verify<P: VerifiablePubkey>(&self, pubkey: &P, message: &[u8]) -> Result<bool, BlsError> {
+    fn verify<P: VerifiablePubkey>(&self, pubkey: &P, message: &[u8]) -> Result<(), BlsError> {
         pubkey.verify_signature(self, message)
     }
 }
@@ -50,40 +55,43 @@ impl SignatureProjective {
 
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
-    pub fn aggregate_with<'a, S: AsSignatureProjective + ?Sized + 'a>(
+    pub fn aggregate_with<'a, S: AddToSignatureProjective + ?Sized + 'a>(
         &mut self,
         signatures: impl Iterator<Item = &'a S>,
     ) -> Result<(), BlsError> {
         for signature in signatures {
-            self.0 += signature.try_as_projective()?.0;
+            signature.add_to_accumulator(self)?;
         }
         Ok(())
     }
 
     /// Aggregate a list of signatures
-    pub fn aggregate<'a, S: AsSignatureProjective + ?Sized + 'a>(
-        mut signatures: impl Iterator<Item = &'a S>,
+    #[allow(clippy::arithmetic_side_effects)]
+    pub fn aggregate<'a, S: AddToSignatureProjective + ?Sized + 'a>(
+        signatures: impl Iterator<Item = &'a S>,
     ) -> Result<SignatureProjective, BlsError> {
-        match signatures.next() {
-            Some(first) => {
-                let mut aggregate = first.try_as_projective()?;
-                aggregate.aggregate_with(signatures)?;
-                Ok(aggregate)
-            }
-            None => Err(BlsError::EmptyAggregation),
+        let mut aggregate = SignatureProjective::identity();
+        let mut count = 0;
+        for signature in signatures {
+            signature.add_to_accumulator(&mut aggregate)?;
+            count += 1;
         }
+        if count == 0 {
+            return Err(BlsError::EmptyAggregation);
+        }
+        Ok(aggregate)
     }
 
     /// Verify a list of signatures against a message and a list of public keys
     pub fn verify_aggregate<
         'a,
-        P: AsPubkeyProjective + ?Sized + 'a,
-        S: AsSignatureProjective + ?Sized + 'a,
+        P: AddToPubkeyProjective + ?Sized + 'a,
+        S: AddToSignatureProjective + ?Sized + 'a,
     >(
         public_keys: impl Iterator<Item = &'a P>,
         signatures: impl Iterator<Item = &'a S>,
         message: &[u8],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         let aggregate_pubkey = PubkeyProjective::aggregate(public_keys)?;
         let aggregate_signature = SignatureProjective::aggregate(signatures)?;
 
@@ -92,11 +100,15 @@ impl SignatureProjective {
 
     /// Verifies an aggregated signature over a set of distinct messages and
     /// public keys.
-    pub fn verify_distinct<'a>(
-        public_keys: impl ExactSizeIterator<Item = &'a Pubkey>,
-        signatures: impl ExactSizeIterator<Item = &'a Signature>,
+    pub fn verify_distinct<'a, P, S>(
+        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        signatures: impl ExactSizeIterator<Item = &'a S>,
         messages: impl ExactSizeIterator<Item = &'a [u8]>,
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError>
+    where
+        P: AsPubkeyAffine + 'a + ?Sized,
+        S: AddToSignatureProjective + 'a + ?Sized,
+    {
         if public_keys.len() != messages.len() || public_keys.len() != signatures.len() {
             return Err(BlsError::InputLengthMismatch);
         }
@@ -104,16 +116,20 @@ impl SignatureProjective {
             return Err(BlsError::EmptyAggregation);
         }
         let aggregate_signature = SignatureProjective::aggregate(signatures)?;
-        Self::verify_distinct_aggregated(public_keys, &aggregate_signature.into(), messages)
+        Self::verify_distinct_aggregated(public_keys, &aggregate_signature, messages)
     }
 
     /// Verifies a pre-aggregated signature over a set of distinct messages and
     /// public keys.
-    pub fn verify_distinct_aggregated<'a>(
-        public_keys: impl ExactSizeIterator<Item = &'a Pubkey>,
-        aggregate_signature: &Signature,
+    pub fn verify_distinct_aggregated<'a, P, S>(
+        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        aggregate_signature: &S,
         messages: impl ExactSizeIterator<Item = &'a [u8]>,
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError>
+    where
+        P: AsPubkeyAffine + 'a + ?Sized,
+        S: AsSignatureAffine + ?Sized,
+    {
         if public_keys.len() != messages.len() {
             return Err(BlsError::InputLengthMismatch);
         }
@@ -125,9 +141,8 @@ impl SignatureProjective {
         let mut pubkeys_affine = alloc::vec::Vec::with_capacity(public_keys.len());
         let public_keys_len = public_keys.len();
         for pubkey in public_keys {
-            let maybe_g1_affine: Option<_> = G1Affine::from_uncompressed(&pubkey.0).into();
-            let g1_affine: G1Affine = maybe_g1_affine.ok_or(BlsError::PointConversion)?;
-            pubkeys_affine.push(g1_affine);
+            let g1_affine = pubkey.try_as_affine()?;
+            pubkeys_affine.push(g1_affine.0);
         }
 
         let mut prepared_hashes = alloc::vec::Vec::with_capacity(messages.len());
@@ -136,11 +151,8 @@ impl SignatureProjective {
             prepared_hashes.push(G2Prepared::from(hashed_message));
         }
 
-        let maybe_aggregate_signature_affine: Option<G2Affine> =
-            G2Affine::from_uncompressed(&aggregate_signature.0).into();
-        let aggregate_signature_affine =
-            maybe_aggregate_signature_affine.ok_or(BlsError::PointConversion)?;
-        let signature_prepared = G2Prepared::from(aggregate_signature_affine);
+        let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
+        let signature_prepared = G2Prepared::from(aggregate_signature_affine.0);
 
         #[cfg(feature = "std")]
         let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
@@ -156,13 +168,15 @@ impl SignatureProjective {
         terms.push((neg_g1_generator, &signature_prepared));
 
         let miller_loop_result = Bls12::multi_miller_loop(&terms);
-        Ok(miller_loop_result.final_exponentiation() == Gt::identity())
+        (miller_loop_result.final_exponentiation() == Gt::identity())
+            .then_some(())
+            .ok_or(BlsError::VerificationFailed)
     }
 
     /// Aggregate a list of signatures into an existing aggregate
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
-    pub fn par_aggregate_with<'a, S: AsSignatureProjective + Sync + 'a>(
+    pub fn par_aggregate_with<'a, S: AddToSignatureProjective + Sync + 'a>(
         &mut self,
         signatures: impl ParallelIterator<Item = &'a S>,
     ) -> Result<(), BlsError> {
@@ -174,26 +188,38 @@ impl SignatureProjective {
     /// Aggregate a list of signatures
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
-    pub fn par_aggregate<'a, S: AsSignatureProjective + Sync + 'a>(
+    pub fn par_aggregate<'a, S: AddToSignatureProjective + Sync + 'a>(
         signatures: impl ParallelIterator<Item = &'a S>,
     ) -> Result<SignatureProjective, BlsError> {
         signatures
             .into_par_iter()
-            .map(|sig| sig.try_as_projective())
-            .try_reduce_with(|mut a, b| {
-                a.0 += b.0;
-                Ok(a)
+            .fold(
+                || Ok(SignatureProjective::identity()),
+                |acc, signature| {
+                    let mut acc = acc?;
+                    signature.add_to_accumulator(&mut acc)?;
+                    Ok(acc)
+                },
+            )
+            .reduce_with(|a, b| {
+                let mut a_val = a?;
+                let b_val = b?;
+                a_val.0 += b_val.0;
+                Ok(a_val)
             })
             .ok_or(BlsError::EmptyAggregation)?
     }
 
     /// Verify a list of signatures against a message and a list of public keys
     #[cfg(feature = "parallel")]
-    pub fn par_verify_aggregate<P: AsPubkeyProjective + Sync, S: AsSignatureProjective + Sync>(
+    pub fn par_verify_aggregate<
+        P: AddToPubkeyProjective + Sync,
+        S: AddToSignatureProjective + Sync,
+    >(
         public_keys: &[P],
         signatures: &[S],
         message: &[u8],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError> {
         if public_keys.len() != signatures.len() {
             return Err(BlsError::InputLengthMismatch);
         }
@@ -210,11 +236,15 @@ impl SignatureProjective {
     /// Verifies a set of signatures over a set of distinct messages and
     /// public keys in parallel.
     #[cfg(feature = "parallel")]
-    pub fn par_verify_distinct(
-        public_keys: &[Pubkey],
-        signatures: &[Signature],
+    pub fn par_verify_distinct<P, S>(
+        public_keys: &[P],
+        signatures: &[S],
         messages: &[&[u8]],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError>
+    where
+        P: AsPubkeyAffine + Sync,
+        S: AddToSignatureProjective + Sync,
+    {
         if public_keys.len() != messages.len() || public_keys.len() != signatures.len() {
             return Err(BlsError::InputLengthMismatch);
         }
@@ -222,17 +252,21 @@ impl SignatureProjective {
             return Err(BlsError::EmptyAggregation);
         }
         let aggregate_signature = SignatureProjective::par_aggregate(signatures.into_par_iter())?;
-        Self::par_verify_distinct_aggregated(public_keys, &aggregate_signature.into(), messages)
+        Self::par_verify_distinct_aggregated(public_keys, &aggregate_signature, messages)
     }
 
     /// In parallel, verifies a pre-aggregated signature over a set of distinct
     /// messages and public keys.
     #[cfg(feature = "parallel")]
-    pub fn par_verify_distinct_aggregated(
-        public_keys: &[Pubkey],
-        aggregate_signature: &Signature,
+    pub fn par_verify_distinct_aggregated<P, S>(
+        public_keys: &[P],
+        aggregate_signature: &S,
         messages: &[&[u8]],
-    ) -> Result<bool, BlsError> {
+    ) -> Result<(), BlsError>
+    where
+        P: AsPubkeyAffine + Sync,
+        S: AsSignatureAffine + Sync,
+    {
         if public_keys.len() != messages.len() {
             return Err(BlsError::InputLengthMismatch);
         }
@@ -249,9 +283,8 @@ impl SignatureProjective {
                     public_keys
                         .par_iter()
                         .map(|pk| {
-                            let maybe_pubkey_affine: Option<_> =
-                                G1Affine::from_uncompressed(&pk.0).into();
-                            maybe_pubkey_affine.ok_or(BlsError::PointConversion)
+                            let affine = pk.try_as_affine()?;
+                            Ok::<G1Affine, BlsError>(affine.0)
                         })
                         .collect()
                 },
@@ -271,11 +304,8 @@ impl SignatureProjective {
         let pubkeys_affine = pubkeys_affine_res?;
         let prepared_hashes = prepared_hashes_res?;
 
-        let maybe_aggregate_signature_affine: Option<G2Affine> =
-            G2Affine::from_uncompressed(&aggregate_signature.0).into();
-        let aggregate_signature_affine =
-            maybe_aggregate_signature_affine.ok_or(BlsError::PointConversion)?;
-        let signature_prepared = G2Prepared::from(aggregate_signature_affine);
+        let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
+        let signature_prepared = G2Prepared::from(aggregate_signature_affine.0);
 
         #[cfg(feature = "std")]
         let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
@@ -291,7 +321,9 @@ impl SignatureProjective {
         terms.push((neg_g1_generator, &signature_prepared));
 
         let miller_loop_result = Bls12::multi_miller_loop(&terms);
-        Ok(miller_loop_result.final_exponentiation() == Gt::identity())
+        (miller_loop_result.final_exponentiation() == Gt::identity())
+            .then_some(())
+            .ok_or(BlsError::VerificationFailed)
     }
 }
 
@@ -310,3 +342,51 @@ pub trait AsSignatureAffine {
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct SignatureAffine(pub(crate) G2Affine);
+
+/// A trait for types that can be efficiently added to a `SignatureProjective` accumulator.
+/// This enables Mixed Addition (Projective += Affine) optimization.
+#[cfg(not(target_os = "solana"))]
+pub trait AddToSignatureProjective {
+    /// Adds itself to the accumulator
+    fn add_to_accumulator(&self, acc: &mut SignatureProjective) -> Result<(), BlsError>;
+}
+
+// Fallback for trait objects to support `dyn` types
+#[cfg(not(target_os = "solana"))]
+impl AddToSignatureProjective for dyn AsSignatureProjective {
+    #[allow(clippy::arithmetic_side_effects)]
+    fn add_to_accumulator(&self, acc: &mut SignatureProjective) -> Result<(), BlsError> {
+        let proj = self.try_as_projective()?;
+        acc.0 += proj.0;
+        Ok(())
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    SignatureAffine,
+    affine
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    SignatureProjective,
+    projective
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    Signature,
+    convert
+);
+#[cfg(not(target_os = "solana"))]
+impl_add_to_accumulator!(
+    AddToSignatureProjective,
+    SignatureProjective,
+    SignatureCompressed,
+    convert
+);
