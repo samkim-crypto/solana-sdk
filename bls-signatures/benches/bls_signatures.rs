@@ -70,7 +70,7 @@ fn bench_aggregate(c: &mut Criterion) {
 
         #[cfg(feature = "parallel")]
         {
-            let pubkey_refs: Vec<&PubkeyProjective> = pubkeys.iter().collect();
+            let pubkey_refs: Vec<&PubkeyAffine> = pubkeys.iter().collect();
 
             group.bench_function(
                 format!("{num_validators} parallel pubkey aggregation"),
