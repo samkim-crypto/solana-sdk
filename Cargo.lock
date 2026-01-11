@@ -3188,7 +3188,7 @@ dependencies = [
 
 [[package]]
 name = "solana-define-syscall"
-version = "4.0.1"
+version = "5.0.0"
 
 [[package]]
 name = "solana-derivation-path"
