@@ -279,6 +279,22 @@ macro_rules! impl_bls_conversions {
             }
         }
 
+        impl $as_projective_trait for &[u8; $uncompressed_size] {
+            fn try_as_projective(&self) -> Result<$projective, crate::error::BlsError> {
+                // self is &&[u8; N], so **self gets [u8; N]
+                let wrapper = $uncompressed(**self);
+                $projective::try_from(&wrapper)
+            }
+        }
+
+        impl $as_projective_trait for &[u8; $compressed_size] {
+            fn try_as_projective(&self) -> Result<$projective, crate::error::BlsError> {
+                // self is &&[u8; N], so **self gets [u8; N]
+                let wrapper = $compressed(**self);
+                $projective::try_from(&wrapper)
+            }
+        }
+
         // AsAffine
         impl $as_affine_trait for $affine {
             fn try_as_affine(&self) -> Result<$affine, crate::error::BlsError> {
@@ -309,6 +325,20 @@ macro_rules! impl_bls_conversions {
         impl $as_affine_trait for [u8; $compressed_size] {
             fn try_as_affine(&self) -> Result<$affine, crate::error::BlsError> {
                 let wrapper = $compressed(*self);
+                $affine::try_from(&wrapper)
+            }
+        }
+
+        impl $as_affine_trait for &[u8; $uncompressed_size] {
+            fn try_as_affine(&self) -> Result<$affine, crate::error::BlsError> {
+                let wrapper = $uncompressed(**self);
+                $affine::try_from(&wrapper)
+            }
+        }
+
+        impl $as_affine_trait for &[u8; $compressed_size] {
+            fn try_as_affine(&self) -> Result<$affine, crate::error::BlsError> {
+                let wrapper = $compressed(**self);
                 $affine::try_from(&wrapper)
             }
         }
