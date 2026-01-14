@@ -237,8 +237,7 @@ mod target_arch {
     }
 
     impl PodG2 {
-        /// Takes in an EIP-197 (big-endian) byte encoding of a group element in G2
-        /// and constructs a `PodG2` struct that encodes the same bytes in little-endian.
+        /// Deserializes to an affine point in G2.
         /// This function performs the curve equation check, but skips the subgroup check.
         pub(crate) fn into_affine_unchecked(self) -> Result<G2, AltBn128Error> {
             if self.0 == [0u8; 128] {
