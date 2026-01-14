@@ -238,6 +238,30 @@ mod target_arch {
 
     impl PodG2 {
         /// Takes in an EIP-197 (big-endian) byte encoding of a group element in G2
+        /// and constructs a `PodG2` struct that encodes the same bytes in little-endian.
+        /// This function performs the curve equation check, but skips the subgroup check.
+        pub(crate) fn into_affine_unchecked(self) -> Result<G2, AltBn128Error> {
+            if self.0 == [0u8; 128] {
+                return Ok(G2::zero());
+            }
+
+            // Skips the expensive subgroup check
+            let g2 = G2::deserialize_with_mode(
+                &*[&self.0[..], &[0u8][..]].concat(),
+                Compress::No,
+                Validate::No,
+            )
+            .map_err(|_| AltBn128Error::InvalidInputData)?;
+
+            // Still check if point is on the curve
+            if !g2.is_on_curve() {
+                return Err(AltBn128Error::GroupError);
+            }
+
+            Ok(g2)
+        }
+
+        /// Takes in an EIP-197 (big-endian) byte encoding of a group element in G2
         /// and constructs a `PodG2` struct that encodes the same bytes in
         /// little-endian.
         pub(crate) fn from_be_bytes(be_bytes: &[u8]) -> Result<Self, AltBn128Error> {
