@@ -67,6 +67,10 @@ pub enum VersionedG2Addition {
 /// for validator code. Solana programs or other downstream projects should use
 /// `alt_bn128_g1_addition_be` or `alt_bn128_g1_addition_le` instead.
 ///
+/// # Security Note: Unlike G2 addition, G1 addition validates both the curve equation
+/// and the subgroup (coset). Future versions may relax this to check only the
+/// curve equation.
+///
 /// # Warning
 ///
 /// Developers should be extremely careful when modifying this function, as a breaking change
@@ -215,6 +219,9 @@ pub fn alt_bn128_g1_addition_le(
 /// for validator code. Solana programs or other downstream projects should use
 /// `alt_bn128_g2_addition_be` or `alt_bn128_g2_addition_le` instead.
 ///
+/// # Security Note: Unlike G1 addition, G2 addition validates only the curve equation;
+/// it does not perform a subgroup (coset) check.
+///
 /// # Warning
 ///
 /// Developers should be extremely careful when modifying this function, as a breaking change
@@ -232,21 +239,17 @@ pub fn alt_bn128_versioned_g2_addition(
     }
 
     let p: G2 = match endianness {
-        Endianness::BE => {
-            PodG2::from_be_bytes(&input[..ALT_BN128_G2_ADDITION_INPUT_SIZE / 2])?.try_into()?
-        }
-        Endianness::LE => {
-            PodG2::from_le_bytes(&input[..ALT_BN128_G2_ADDITION_INPUT_SIZE / 2])?.try_into()?
-        }
+        Endianness::BE => PodG2::from_be_bytes(&input[..ALT_BN128_G2_ADDITION_INPUT_SIZE / 2])?
+            .into_affine_unchecked()?,
+        Endianness::LE => PodG2::from_le_bytes(&input[..ALT_BN128_G2_ADDITION_INPUT_SIZE / 2])?
+            .into_affine_unchecked()?,
     };
 
     let q: G2 = match endianness {
-        Endianness::BE => {
-            PodG2::from_be_bytes(&input[ALT_BN128_G2_ADDITION_INPUT_SIZE / 2..])?.try_into()?
-        }
-        Endianness::LE => {
-            PodG2::from_le_bytes(&input[ALT_BN128_G2_ADDITION_INPUT_SIZE / 2..])?.try_into()?
-        }
+        Endianness::BE => PodG2::from_be_bytes(&input[ALT_BN128_G2_ADDITION_INPUT_SIZE / 2..])?
+            .into_affine_unchecked()?,
+        Endianness::LE => PodG2::from_le_bytes(&input[ALT_BN128_G2_ADDITION_INPUT_SIZE / 2..])?
+            .into_affine_unchecked()?,
     };
 
     #[allow(clippy::arithmetic_side_effects)]
