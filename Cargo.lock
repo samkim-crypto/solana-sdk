@@ -3860,6 +3860,7 @@ dependencies = [
 name = "solana-rent"
 version = "3.1.0"
 dependencies = [
+ "proptest",
  "serde",
  "serde_derive",
  "solana-clock",
