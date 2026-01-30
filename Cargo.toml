@@ -246,7 +246,7 @@ solana-epoch-rewards = { path = "epoch-rewards", version = "3.0.0" }
 solana-epoch-rewards-hasher = { path = "epoch-rewards-hasher", version = "3.0.0" }
 solana-epoch-schedule = { path = "epoch-schedule", version = "3.0.0" }
 solana-epoch-stake = { path = "epoch-stake", version = "3.0.0" }
-solana-example-mocks = { path = "example-mocks", version = "3.0.0" }
+solana-example-mocks = { path = "example-mocks", version = "4.0.0" }
 solana-feature-gate-interface = { path = "feature-gate-interface", version = "3.0.0" }
 solana-fee-calculator = { path = "fee-calculator", version = "3.0.0" }
 solana-fee-structure = { path = "fee-structure", version = "3.0.0" }
