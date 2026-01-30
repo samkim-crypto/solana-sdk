@@ -3272,12 +3272,8 @@ version = "3.0.0"
 dependencies = [
  "serde",
  "serde_derive",
- "solana-address-lookup-table-interface",
- "solana-clock",
  "solana-hash",
  "solana-instruction",
- "solana-keccak-hasher",
- "solana-message",
  "solana-nonce",
  "solana-pubkey",
  "solana-sdk-ids",
@@ -4008,9 +4004,13 @@ dependencies = [
  "k256",
  "rand 0.8.5",
  "solana-define-syscall",
+ "solana-example-mocks",
  "solana-frozen-abi",
  "solana-frozen-abi-macro",
- "solana-program",
+ "solana-instruction",
+ "solana-keccak-hasher",
+ "solana-program-error",
+ "solana-pubkey",
  "thiserror 2.0.17",
 ]
 
