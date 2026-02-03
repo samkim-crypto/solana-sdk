@@ -3409,7 +3409,7 @@ dependencies = [
 
 [[package]]
 name = "solana-hash"
-version = "4.0.1"
+version = "4.1.0"
 dependencies = [
  "borsh",
  "bs58",
