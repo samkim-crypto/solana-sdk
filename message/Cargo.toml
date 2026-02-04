@@ -16,9 +16,8 @@ all-features = true
 rustdoc-args = ["--cfg=docsrs"]
 
 [features]
-bincode = ["dep:bincode", "serde"]
 blake3 = ["dep:blake3"]
-dev-context-only-utils = ["bincode", "blake3"]
+dev-context-only-utils = ["blake3", "wincode"]
 frozen-abi = [
     "dep:solana-frozen-abi",
     "dep:solana-frozen-abi-macro",
@@ -39,7 +38,6 @@ serde = [
 wincode = ["dep:wincode", "solana-hash/wincode", "solana-address/wincode"]
 
 [dependencies]
-bincode = { workspace = true, optional = true }
 blake3 = { workspace = true, features = ["traits-preview"], optional = true }
 lazy_static = { workspace = true }
 serde = { workspace = true, optional = true }
@@ -60,6 +58,7 @@ wincode = { workspace = true, optional = true, features = [
 
 [dev-dependencies]
 anyhow = { workspace = true }
+bincode = { workspace = true }
 bitflags = { workspace = true }
 borsh = { workspace = true }
 itertools = { workspace = true }
