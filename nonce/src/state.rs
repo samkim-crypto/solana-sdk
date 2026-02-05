@@ -1,5 +1,7 @@
 #[cfg(feature = "serde")]
 use serde_derive::{Deserialize, Serialize};
+#[cfg(feature = "wincode")]
+use wincode::{SchemaRead, SchemaWrite};
 use {
     solana_fee_calculator::FeeCalculator, solana_hash::Hash, solana_pubkey::Pubkey,
     solana_sha256_hasher::hashv,
@@ -7,14 +9,18 @@ use {
 
 const DURABLE_NONCE_HASH_PREFIX: &[u8] = "DURABLE_NONCE".as_bytes();
 
+#[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "wincode", derive(SchemaWrite, SchemaRead))]
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub struct DurableNonce(Hash);
 
 /// Initialized data of a durable transaction nonce account.
 ///
 /// This is stored within [`State`] for initialized nonce accounts.
+#[repr(C)]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "wincode", derive(SchemaWrite, SchemaRead))]
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct Data {
     /// Address of the account that signs transactions using the nonce account.
@@ -68,6 +74,7 @@ impl DurableNonce {
 /// When created in memory with [`State::default`] or when deserialized from an
 /// uninitialized account, a nonce account will be [`State::Uninitialized`].
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(feature = "wincode", derive(SchemaWrite, SchemaRead))]
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub enum State {
     #[default]
@@ -105,5 +112,17 @@ mod test {
         let data = Versions::new(State::Initialized(Data::default()));
         let size = bincode::serialized_size(&data).unwrap();
         assert_eq!(State::size() as u64, size);
+    }
+
+    #[test]
+    #[cfg(feature = "wincode")]
+    fn test_nonce_state_size_wincode() {
+        use wincode::SchemaWrite;
+
+        let data = Versions::new(State::Initialized(Data::default()));
+        assert_eq!(
+            <Versions as SchemaWrite>::size_of(&data).unwrap(),
+            State::size()
+        );
     }
 }
