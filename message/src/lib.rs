@@ -50,6 +50,7 @@ use serde_derive::{Deserialize, Serialize};
 use solana_frozen_abi_macro::AbiExample;
 #[cfg(feature = "wincode")]
 use wincode::{SchemaRead, SchemaWrite};
+use {solana_sdk_ids::bpf_loader_upgradeable, std::collections::HashSet};
 
 #[cfg(not(target_os = "solana"))]
 #[path = ""]
@@ -62,6 +63,7 @@ mod non_bpf_modules {
     pub use {account_keys::*, address_loader::*, sanitized::*, versions::*};
 }
 
+use crate::compiled_instruction::CompiledInstruction;
 #[cfg(not(target_os = "solana"))]
 pub use non_bpf_modules::*;
 pub use {
@@ -143,4 +145,124 @@ pub struct MessageHeader {
 pub struct AddressLookupTableAccount {
     pub key: Address,
     pub addresses: Vec<Address>,
+}
+
+/// Returns true if the account at the specified index was requested to be
+/// writable.
+///
+/// This method should not be used directly. It is used by Legacy and V1
+/// message types.
+#[inline(always)]
+fn is_writable_index(i: usize, header: MessageHeader, account_keys: &[Address]) -> bool {
+    i < (header.num_required_signatures as usize)
+        .saturating_sub(header.num_readonly_signed_accounts as usize)
+        || (i >= header.num_required_signatures as usize
+            && i < account_keys
+                .len()
+                .saturating_sub(header.num_readonly_unsigned_accounts as usize))
+}
+
+/// Returns true if the account at the specified index is in the optional
+/// reserved account keys set.
+#[inline(always)]
+fn is_account_maybe_reserved(
+    i: usize,
+    account_keys: &[Address],
+    reserved_account_keys: Option<&HashSet<Address>>,
+) -> bool {
+    let mut is_maybe_reserved = false;
+    if let Some(reserved_account_keys) = reserved_account_keys {
+        if let Some(key) = account_keys.get(i) {
+            is_maybe_reserved = reserved_account_keys.contains(key);
+        }
+    }
+    is_maybe_reserved
+}
+
+#[inline(always)]
+fn is_program_id_write_demoted(
+    i: usize,
+    account_keys: &[Address],
+    instructions: &[CompiledInstruction],
+) -> bool {
+    is_key_called_as_program(instructions, i) && !is_upgradeable_loader_present(account_keys)
+}
+
+#[inline(always)]
+fn is_key_called_as_program(instructions: &[CompiledInstruction], key_index: usize) -> bool {
+    if let Ok(key_index) = u8::try_from(key_index) {
+        instructions
+            .iter()
+            .any(|ix| ix.program_id_index == key_index)
+    } else {
+        false
+    }
+}
+
+/// Returns `true` if any account is the BPF upgradeable loader.
+#[inline(always)]
+fn is_upgradeable_loader_present(account_keys: &[Address]) -> bool {
+    account_keys
+        .iter()
+        .any(|&key| key == bpf_loader_upgradeable::id())
+}
+
+/// Returns true if the account at the specified index is writable by the
+/// instructions in this message. The `reserved_account_keys` param has been
+/// optional to allow clients to approximate writability without requiring
+/// fetching the latest set of reserved account keys. If this method is
+/// called by the runtime, the latest set of reserved account keys must be
+/// passed.
+#[inline(always)]
+fn is_maybe_writable(
+    i: usize,
+    header: MessageHeader,
+    account_keys: &[Address],
+    instructions: &[CompiledInstruction],
+    reserved_account_keys: Option<&HashSet<Address>>,
+) -> bool {
+    (is_writable_index(i, header, account_keys))
+        && !is_account_maybe_reserved(i, account_keys, reserved_account_keys)
+        && !is_program_id_write_demoted(i, account_keys, instructions)
+}
+
+#[cfg(test)]
+mod tests {
+    use {
+        crate::{is_account_maybe_reserved, Message},
+        solana_address::Address,
+        std::collections::HashSet,
+    };
+
+    #[test]
+    fn test_is_account_maybe_reserved() {
+        let key0 = Address::new_unique();
+        let key1 = Address::new_unique();
+
+        let message = Message {
+            account_keys: vec![key0, key1],
+            ..Message::default()
+        };
+
+        let reserved_account_keys = HashSet::from([key1]);
+
+        assert!(!is_account_maybe_reserved(
+            0,
+            &message.account_keys,
+            Some(&reserved_account_keys)
+        ));
+        assert!(is_account_maybe_reserved(
+            1,
+            &message.account_keys,
+            Some(&reserved_account_keys)
+        ));
+        assert!(!is_account_maybe_reserved(
+            2,
+            &message.account_keys,
+            Some(&reserved_account_keys)
+        ));
+        assert!(!is_account_maybe_reserved(0, &message.account_keys, None));
+        assert!(!is_account_maybe_reserved(1, &message.account_keys, None));
+        assert!(!is_account_maybe_reserved(2, &message.account_keys, None));
+    }
 }
