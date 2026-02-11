@@ -324,8 +324,8 @@ unsafe impl<'de, C: Config> SchemaRead<'de, C> for VersionedTransaction {
 
             let expected_signatures_len = message.header().num_required_signatures as usize;
 
-            let bytes =
-                reader.fill_exact(expected_signatures_len.saturating_mul(SIGNATURE_SIZE))?;
+            let bytes_to_read = expected_signatures_len.saturating_mul(SIGNATURE_SIZE);
+            let bytes = reader.fill_exact(bytes_to_read)?;
             let mut signatures = Vec::with_capacity(expected_signatures_len);
 
             // SAFETY: signatures vector is allocated with enough capacity to hold
@@ -339,6 +339,9 @@ unsafe impl<'de, C: Config> SchemaRead<'de, C> for VersionedTransaction {
                     expected_signatures_len,
                 );
                 signatures.set_len(expected_signatures_len);
+                // Advance the reader by the number of bytes we just consumed
+                // for the signatures.
+                reader.consume_unchecked(bytes_to_read);
             }
 
             dst.write(Self {
