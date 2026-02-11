@@ -317,10 +317,27 @@ unsafe impl<'de, C: Config> SchemaRead<'de, C> for VersionedTransaction {
             <VersionedMessage as SchemaRead<'de, C>>::read(reader, unsafe {
                 &mut *(addr_of_mut!((*dst_ptr).message)).cast::<MaybeUninit<_>>()
             })?;
+
+            // SAFETY: The transaction is fully initialized at this point since
+            // both `signatures` and `message` have been read.
+            let transaction = unsafe { dst.assume_init_ref() };
+
+            // validate that we got either a legacy or V0 message
+            if !matches!(
+                transaction.message,
+                VersionedMessage::Legacy(_) | VersionedMessage::V0(_)
+            ) {
+                return Err(ReadError::Custom("invalid message version"));
+            }
         } else if *discriminator == V1_PREFIX {
             // V1 transaction
 
             let message = <VersionedMessage as SchemaRead<'de, C>>::get(&mut reader)?;
+
+            // validate that we got a V1 message
+            if !matches!(message, VersionedMessage::V1(_)) {
+                return Err(ReadError::Custom("invalid message version"));
+            }
 
             let expected_signatures_len = message.header().num_required_signatures as usize;
 
@@ -747,5 +764,42 @@ mod tests {
             v1_tx, deserialized,
             "Deserialized payload should match original"
         );
+    }
+
+    #[test]
+    fn test_v1_message_in_legacy_transaction() {
+        #[rustfmt::skip]
+        let malformed_input: &[u8] = &[
+            0x00,                   // 0 signatures via ShortU16 -> takes Legacy/V0 path
+            0x81,                   // V1 message prefix
+            // V1 LegacyHeader (3 bytes)
+            0x01,                   // num_required_signatures = 1
+            0x00,                   // num_readonly_signed_accounts = 0
+            0x00,                   // num_readonly_unsigned_accounts = 0
+            // TransactionConfigMask (4 bytes, little-endian)
+            0x00, 0x00, 0x00, 0x00,
+            // LifetimeSpecifier / blockhash (32 bytes)
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            // NumInstructions (1 byte)
+            0x00,
+            // NumAddresses (1 byte)
+            0x01,
+            // 1 address (32 bytes)
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+
+        let result: Result<VersionedTransaction, _> = wincode::deserialize(malformed_input);
+
+        if let Err(wincode::ReadError::Custom(msg)) = result {
+            assert_eq!(msg, "invalid message version");
+        } else {
+            panic!("Deserialization should not succeed with a V1 message in Legacy/V0 format")
+        }
     }
 }
