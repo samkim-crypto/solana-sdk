@@ -6,13 +6,13 @@ use std::sync::LazyLock;
 use {
     crate::{
         error::BlsError,
-        hash::{hash_pop_payload_to_point, hash_signature_message_to_point},
+        hash::{HashedMessage, HashedPoPPayload},
         proof_of_possession::{AsProofOfPossessionAffine, ProofOfPossessionAffine},
         pubkey::bytes::{Pubkey, PubkeyCompressed},
         secret_key::SecretKey,
         signature::{AsSignatureAffine, SignatureAffine},
     },
-    blstrs::{Bls12, G1Affine, G1Projective, G2Affine, G2Prepared, Gt},
+    blstrs::{Bls12, G1Affine, G1Projective, G2Prepared, Gt},
     group::Group,
     pairing::{MillerLoopResult, MultiMillerLoop},
 };
@@ -134,10 +134,21 @@ pub trait VerifiablePubkey: AsPubkeyAffine {
         signature: &S,
         message: &[u8],
     ) -> Result<(), BlsError> {
+        let hashed_message = HashedMessage::new(message);
+        self.verify_signature_pre_hashed(signature, &hashed_message)
+    }
+
+    /// Uses this public key to verify any convertible signature type using a
+    /// pre-hashed message.
+    fn verify_signature_pre_hashed<S: AsSignatureAffine>(
+        &self,
+        signature: &S,
+        hashed_message: &HashedMessage,
+    ) -> Result<(), BlsError> {
         let pubkey_affine = self.try_as_affine()?;
         let signature_affine = signature.try_as_affine()?;
         pubkey_affine
-            ._verify_signature(&signature_affine, message)
+            ._verify_signature(&signature_affine, hashed_message)
             .then_some(())
             .ok_or(BlsError::VerificationFailed)
     }
@@ -148,10 +159,25 @@ pub trait VerifiablePubkey: AsPubkeyAffine {
         proof: &P,
         payload: Option<&[u8]>,
     ) -> Result<(), BlsError> {
+        let hashed_pubkey = if let Some(bytes) = payload {
+            HashedPoPPayload::new(bytes)
+        } else {
+            let pubkey_bytes = self.try_as_affine()?.to_bytes_compressed();
+            HashedPoPPayload::new(&pubkey_bytes)
+        };
+        self.verify_proof_of_possession_pre_hashed(proof, &hashed_pubkey)
+    }
+
+    /// Uses this public key to verify any convertible proof of possession type.
+    fn verify_proof_of_possession_pre_hashed<P: AsProofOfPossessionAffine>(
+        &self,
+        proof: &P,
+        hashed_payload: &HashedPoPPayload,
+    ) -> Result<(), BlsError> {
         let pubkey_affine = self.try_as_affine()?;
         let proof_affine = proof.try_as_affine()?;
         pubkey_affine
-            ._verify_proof_of_possession(&proof_affine, payload)
+            ._verify_proof_of_possession(&proof_affine, hashed_payload)
             .then_some(())
             .ok_or(BlsError::VerificationFailed)
     }
@@ -169,12 +195,15 @@ pub struct PubkeyAffine(pub(crate) G1Affine);
 #[cfg(not(target_os = "solana"))]
 impl PubkeyAffine {
     /// Verify a signature and a message against a public key
-    pub(crate) fn _verify_signature(&self, signature: &SignatureAffine, message: &[u8]) -> bool {
+    pub(crate) fn _verify_signature(
+        &self,
+        signature: &SignatureAffine,
+        hashed_message: &HashedMessage,
+    ) -> bool {
         // The verification equation is e(pubkey, H(m)) = e(g1, signature).
         // This can be rewritten as e(pubkey, H(m)) * e(-g1, signature) = 1, which
         // allows for a more efficient verification using a multi-miller loop.
-        let hashed_message: G2Affine = hash_signature_message_to_point(message).into();
-        let hashed_message_prepared = G2Prepared::from(hashed_message);
+        let hashed_message_prepared = G2Prepared::from(hashed_message.0);
         let signature_prepared = G2Prepared::from(signature.0);
 
         // use the static valud if `std` is available, otherwise compute it
@@ -196,16 +225,11 @@ impl PubkeyAffine {
     pub(crate) fn _verify_proof_of_possession(
         &self,
         proof: &ProofOfPossessionAffine,
-        payload: Option<&[u8]>,
+        hashed_payload: &HashedPoPPayload,
     ) -> bool {
         // The verification equation is e(pubkey, H(pubkey)) == e(g1, proof).
         // This is rewritten to e(pubkey, H(pubkey)) * e(-g1, proof) = 1 for batching.
-        let hashed_pubkey: G2Affine = if let Some(bytes) = payload {
-            hash_pop_payload_to_point(bytes).into()
-        } else {
-            let pubkey_bytes = self.to_bytes_compressed();
-            hash_pop_payload_to_point(&pubkey_bytes).into()
-        };
+        let hashed_pubkey = hashed_payload.0;
         let hashed_pubkey_prepared = G2Prepared::from(hashed_pubkey);
         let proof_prepared = G2Prepared::from(proof.0);
 
