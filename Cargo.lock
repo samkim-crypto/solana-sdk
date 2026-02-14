@@ -3959,7 +3959,7 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-wasm-js"
-version = "1.0.0"
+version = "2.0.0"
 dependencies = [
  "console_error_panic_hook",
  "console_log",
