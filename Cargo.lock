@@ -3110,7 +3110,7 @@ dependencies = [
 
 [[package]]
 name = "solana-client-traits"
-version = "3.0.0"
+version = "4.0.0"
 dependencies = [
  "solana-account",
  "solana-commitment-config",
