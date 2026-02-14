@@ -3656,7 +3656,7 @@ dependencies = [
 
 [[package]]
 name = "solana-nonce-account"
-version = "3.0.0"
+version = "4.0.0"
 dependencies = [
  "solana-account",
  "solana-fee-calculator",
