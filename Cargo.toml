@@ -275,7 +275,7 @@ solana-nonce-account = { path = "nonce-account", version = "4.0.0" }
 solana-offchain-message = { path = "offchain-message", version = "3.0.0" }
 solana-package-metadata = { path = "package-metadata", version = "3.0.0" }
 solana-package-metadata-macro = { path = "package-metadata-macro", version = "3.0.0" }
-solana-packet = { path = "packet", version = "4.0.0" }
+solana-packet = { path = "packet", version = "4.1.0" }
 solana-poh-config = { path = "poh-config", version = "3.0.0" }
 solana-poseidon = { path = "poseidon", version = "4.0.0" }
 solana-precompile-error = { path = "precompile-error", version = "3.0.0" }
