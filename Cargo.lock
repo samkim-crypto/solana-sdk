@@ -2919,7 +2919,7 @@ dependencies = [
 
 [[package]]
 name = "solana-account"
-version = "4.0.0"
+version = "4.1.0"
 dependencies = [
  "bincode",
  "qualifier_attr",
