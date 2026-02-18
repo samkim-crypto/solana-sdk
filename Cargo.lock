@@ -4202,7 +4202,7 @@ dependencies = [
 
 [[package]]
 name = "solana-stable-layout"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "memoffset",
  "solana-instruction",
