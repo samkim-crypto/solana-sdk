@@ -3274,7 +3274,7 @@ dependencies = [
 
 [[package]]
 name = "solana-epoch-stake"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "solana-define-syscall",
  "solana-pubkey",
