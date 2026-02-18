@@ -3949,7 +3949,7 @@ dependencies = [
 
 [[package]]
 name = "solana-sdk-macro"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "bs58",
  "proc-macro2",
