@@ -3014,7 +3014,7 @@ dependencies = [
 
 [[package]]
 name = "solana-atomic-u64"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "parking_lot",
 ]
