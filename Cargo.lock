@@ -4124,7 +4124,7 @@ checksum = "de3bd991c2cc415291c86bb0b6b4d53e93d13bb40344e4c5a2884e0e4f5fa93f"
 
 [[package]]
 name = "solana-shred-version"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "solana-hard-forks",
  "solana-hash",
