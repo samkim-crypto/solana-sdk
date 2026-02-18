@@ -313,7 +313,7 @@ solana-signer-store = { path = "signer-store", version = "0.1.0" }
 solana-slot-hashes = { path = "slot-hashes", version = "3.0.0" }
 solana-slot-history = { path = "slot-history", version = "3.0.0" }
 solana-stable-layout = { path = "stable-layout", version = "3.0.0" }
-solana-system-interface = { path = "system-interface", version = "3.0" }
+solana-system-interface = { path = "system-interface", version = "3.1" }
 solana-system-transaction = { path = "system-transaction", version = "4.0.0" }
 solana-system-wasm-js = { path = "system-wasm-js", version = "1.0" }
 solana-sysvar = { path = "sysvar", version = "4.0.0" }
