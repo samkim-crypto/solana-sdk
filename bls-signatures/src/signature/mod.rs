@@ -23,13 +23,14 @@ mod tests {
             hash::{HashedMessage, PreparedHashedMessage},
             keypair::Keypair,
             pubkey::{
-                AsPubkeyAffine, AsPubkeyProjective, Pubkey, PubkeyAffine, PubkeyCompressed,
-                PubkeyProjective, VerifiablePubkey,
+                AsPubkeyAffine, AsPubkeyProjective, PopVerified, Pubkey, PubkeyAffine,
+                PubkeyCompressed, PubkeyProjective, VerifySignature,
             },
         },
         core::{iter::empty, str::FromStr},
         std::{string::ToString, vec::Vec},
     };
+
     #[test]
     fn test_signature_verification() {
         let keypair = Keypair::new();
@@ -37,68 +38,73 @@ mod tests {
 
         let signature_projective = keypair.sign(test_message);
 
-        let pubkey_affine: PubkeyAffine = keypair.public;
+        let pubkey_affine: PubkeyAffine = *keypair.public;
         let pubkey_projective: PubkeyProjective = pubkey_affine.into();
         let pubkey_uncompressed: Pubkey = pubkey_affine.into(); // [u8; 96]
         let pubkey_compressed: PubkeyCompressed = pubkey_affine.into(); // [u8; 48]
+
+        let verified_projective = unsafe { PopVerified::new_unchecked(pubkey_projective) };
+        let verified_affine = unsafe { PopVerified::new_unchecked(pubkey_affine) };
+        let verified_uncompressed = unsafe { PopVerified::new_unchecked(pubkey_uncompressed) };
+        let verified_compressed = unsafe { PopVerified::new_unchecked(pubkey_compressed) };
 
         let signature_affine: SignatureAffine = signature_projective.into();
         let signature_uncompressed: Signature = signature_affine.into(); // [u8; 192]
         let signature_compressed: SignatureCompressed = signature_affine.into(); // [u8; 96]
 
         // Verify with PubkeyProjective
-        assert!(pubkey_projective
+        assert!(verified_projective
             .verify_signature(&signature_projective, test_message)
             .is_ok());
-        assert!(pubkey_projective
+        assert!(verified_projective
             .verify_signature(&signature_affine, test_message)
             .is_ok());
-        assert!(pubkey_projective
+        assert!(verified_projective
             .verify_signature(&signature_uncompressed, test_message)
             .is_ok());
-        assert!(pubkey_projective
+        assert!(verified_projective
             .verify_signature(&signature_compressed, test_message)
             .is_ok());
 
         // Verify with PubkeyAffine
-        assert!(pubkey_affine
+        assert!(verified_affine
             .verify_signature(&signature_projective, test_message)
             .is_ok());
-        assert!(pubkey_affine
+        assert!(verified_affine
             .verify_signature(&signature_affine, test_message)
             .is_ok());
-        assert!(pubkey_affine
+        assert!(verified_affine
             .verify_signature(&signature_uncompressed, test_message)
             .is_ok());
-        assert!(pubkey_affine
+        assert!(verified_affine
             .verify_signature(&signature_compressed, test_message)
             .is_ok());
 
         // Verify with Pubkey (Uncompressed Bytes)
-        assert!(pubkey_uncompressed
+        assert!(verified_uncompressed
             .verify_signature(&signature_projective, test_message)
             .is_ok());
-        assert!(pubkey_uncompressed
+        assert!(verified_uncompressed
             .verify_signature(&signature_affine, test_message)
             .is_ok());
-        assert!(pubkey_uncompressed
+        assert!(verified_uncompressed
             .verify_signature(&signature_uncompressed, test_message)
             .is_ok());
-        assert!(pubkey_uncompressed
+        assert!(verified_uncompressed
             .verify_signature(&signature_compressed, test_message)
             .is_ok());
 
         // Verify with PubkeyCompressed (Compressed Bytes)
-        assert!(pubkey_compressed
+        assert!(verified_compressed
             .verify_signature(&signature_projective, test_message)
             .is_ok());
-        assert!(pubkey_compressed
+        assert!(verified_compressed
             .verify_signature(&signature_affine, test_message)
             .is_ok());
-        assert!(pubkey_compressed
+        assert!(verified_compressed
             .verify_signature(&signature_uncompressed, test_message)
             .is_ok());
-        assert!(pubkey_compressed
+        assert!(verified_compressed
             .verify_signature(&signature_compressed, test_message)
             .is_ok());
     }
@@ -181,8 +187,8 @@ mod tests {
         )
         .is_ok());
         // verify with affine and compressed types
-        let pubkey0_affine: PubkeyAffine = keypair0.public;
-        let pubkey1_affine: PubkeyAffine = keypair1.public;
+        let pubkey0_affine = keypair0.public;
+        let pubkey1_affine = keypair1.public;
         let signature0_affine: SignatureAffine = signature0.into();
         let signature1_affine: SignatureAffine = signature1.into();
         assert!(SignatureProjective::verify_aggregate(
@@ -203,13 +209,10 @@ mod tests {
         // pre-aggregate the public keys
         let aggregate_pubkey =
             PubkeyProjective::aggregate([&keypair0.public, &keypair1.public].into_iter()).unwrap();
-        assert!(SignatureProjective::verify_aggregate(
-            [&aggregate_pubkey].into_iter(),
-            [&signature0, &signature1].into_iter(),
-            test_message,
-        )
-        .is_ok());
-        let pubkeys = Vec::new() as Vec<PubkeyProjective>;
+        assert!(aggregate_pubkey
+            .verify_signature(&aggregate_signature, test_message,)
+            .is_ok());
+        let pubkeys = Vec::new() as Vec<PopVerified<PubkeyProjective>>;
 
         // empty set of public keys or signatures
         let err = SignatureProjective::verify_aggregate(
@@ -250,9 +253,9 @@ mod tests {
 
         // Success cases
         let pubkeys = [
-            Pubkey::from(keypair0.public),
-            Pubkey::from(keypair1.public),
-            Pubkey::from(keypair2.public),
+            Pubkey::from(*keypair0.public),
+            Pubkey::from(*keypair1.public),
+            Pubkey::from(*keypair2.public),
         ];
         let messages: Vec<&[u8]> = std::vec![message0, message1, message2];
         let signatures = std::vec![signature0, signature1, signature2];
@@ -303,9 +306,9 @@ mod tests {
 
         let wrong_keypair = Keypair::new();
         let wrong_pubkeys = [
-            Pubkey::from(keypair0.public),
-            Pubkey::from(wrong_keypair.public),
-            Pubkey::from(keypair2.public),
+            Pubkey::from(*keypair0.public),
+            Pubkey::from(*wrong_keypair.public),
+            Pubkey::from(*keypair2.public),
         ];
         assert!(SignatureProjective::verify_distinct(
             wrong_pubkeys.iter(),
@@ -363,9 +366,9 @@ mod tests {
         let signature2: Signature = keypair2.sign(message).into();
 
         let pubkeys = [
-            Pubkey::from(keypair0.public),
-            Pubkey::from(keypair1.public),
-            Pubkey::from(keypair2.public),
+            Pubkey::from(*keypair0.public),
+            Pubkey::from(*keypair1.public),
+            Pubkey::from(*keypair2.public),
         ];
         let signatures = [signature0, signature1, signature2];
 
@@ -407,12 +410,13 @@ mod tests {
         let signature2: Signature = keypair2.sign(unique_message).into();
 
         let pubkeys = [
-            Pubkey::from(keypair0.public),
-            Pubkey::from(keypair1.public),
-            Pubkey::from(keypair2.public),
+            Pubkey::from(*keypair0.public),
+            Pubkey::from(*keypair1.public),
+            Pubkey::from(*keypair2.public),
         ];
         let signatures = [signature0, signature1, signature2];
         let messages: Vec<&[u8]> = std::vec![shared_message, shared_message, unique_message];
+
         assert!(SignatureProjective::verify_distinct(
             pubkeys.iter(),
             signatures.iter(),
@@ -440,18 +444,26 @@ mod tests {
         let signature1_projective = keypair1.sign(test_message);
         let signature2_projective = keypair2.sign(test_message);
 
-        let pubkey0: PubkeyProjective = keypair0.public.into(); // Projective
-        let pubkey1_affine: PubkeyAffine = keypair1.public; // Affine
-        let pubkey2_compressed: PubkeyCompressed = keypair2.public.into(); // Compressed
+        let pubkey0: PubkeyProjective = (*keypair0.public).into(); // Projective
+        let pubkey1_affine: PubkeyAffine = *keypair1.public; // Affine
+        let pubkey2_compressed: PubkeyCompressed = (*keypair2.public).into(); // Compressed
 
         let signature0 = signature0_projective; // Projective
         let signature1_affine: SignatureAffine = signature1_projective.into(); // Affine
         let signature2_compressed: SignatureCompressed = signature2_projective.into(); // Compressed
 
-        let dyn_pubkeys: Vec<&dyn AsPubkeyProjective> =
-            std::vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
+        let p0: &dyn AsPubkeyProjective = &pubkey0;
+        let p1: &dyn AsPubkeyProjective = &pubkey1_affine;
+        let p2: &dyn AsPubkeyProjective = &pubkey2_compressed;
+
+        let pop0 = unsafe { PopVerified::ref_unchecked(p0) };
+        let pop1 = unsafe { PopVerified::ref_unchecked(p1) };
+        let pop2 = unsafe { PopVerified::ref_unchecked(p2) };
+
+        let dyn_pubkeys = std::vec![pop0, pop1, pop2];
         let dyn_signatures: Vec<&dyn AsSignatureProjective> =
             std::vec![&signature0, &signature1_affine, &signature2_compressed];
+
         assert!(SignatureProjective::verify_aggregate(
             dyn_pubkeys.into_iter(),
             dyn_signatures.into_iter(),
@@ -460,10 +472,19 @@ mod tests {
         .is_ok());
 
         let wrong_message = b"this is not the correct message";
-        let dyn_pubkeys_fail: Vec<&dyn AsPubkeyProjective> =
-            std::vec![&pubkey0, &pubkey1_affine, &pubkey2_compressed];
+
+        let p0_fail: &dyn AsPubkeyProjective = &pubkey0;
+        let p1_fail: &dyn AsPubkeyProjective = &pubkey1_affine;
+        let p2_fail: &dyn AsPubkeyProjective = &pubkey2_compressed;
+
+        let pop0_fail = unsafe { PopVerified::ref_unchecked(p0_fail) };
+        let pop1_fail = unsafe { PopVerified::ref_unchecked(p1_fail) };
+        let pop2_fail = unsafe { PopVerified::ref_unchecked(p2_fail) };
+
+        let dyn_pubkeys_fail = std::vec![pop0_fail, pop1_fail, pop2_fail];
         let dyn_signatures_fail: Vec<&dyn AsSignatureProjective> =
             std::vec![&signature0, &signature1_affine, &signature2_compressed];
+
         assert!(SignatureProjective::verify_aggregate(
             dyn_pubkeys_fail.into_iter(),
             dyn_signatures_fail.into_iter(),
@@ -521,7 +542,7 @@ mod tests {
         let keypairs: Vec<_> = (0..5).map(|_| Keypair::new()).collect();
         let pubkeys: Vec<_> = keypairs
             .iter()
-            .map(|kp| PubkeyProjective::from(&kp.public))
+            .map(|kp| unsafe { PopVerified::new_unchecked(PubkeyProjective::from(*kp.public)) })
             .collect();
         let signatures: Vec<_> = keypairs.iter().map(|kp| kp.sign(message)).collect();
 
@@ -579,9 +600,9 @@ mod tests {
 
         // Use Pubkey (bytes) to match par_verify_distinct signature
         let pubkeys = [
-            Pubkey::from(keypair0.public),
-            Pubkey::from(keypair1.public),
-            Pubkey::from(keypair2.public),
+            Pubkey::from(*keypair0.public),
+            Pubkey::from(*keypair1.public),
+            Pubkey::from(*keypair2.public),
         ];
         let messages_refs: Vec<&[u8]> = std::vec![message0, message1, message2];
         let signatures = [signature0, signature1, signature2];
@@ -620,14 +641,16 @@ mod tests {
         let pubkey_bytes = keypair.public.to_bytes_compressed();
         let signature_bytes = signature_projective.to_bytes_compressed();
 
-        assert!(pubkey_bytes
+        let verified_bytes = unsafe { PopVerified::new_unchecked(pubkey_bytes) };
+
+        assert!(verified_bytes
             .verify_signature(&signature_bytes, message)
             .is_ok());
         assert!(keypair
             .public
             .verify_signature(&signature_bytes, message)
             .is_ok());
-        assert!(pubkey_bytes
+        assert!(verified_bytes
             .verify_signature(&signature_bytes, message)
             .is_ok());
 
@@ -635,14 +658,15 @@ mod tests {
         let mut bad_pubkey_bytes = pubkey_bytes;
         bad_pubkey_bytes[0] ^= 0xFF;
 
-        let result = bad_pubkey_bytes.verify_signature(&signature_bytes, message);
+        let bad_verified_bytes = unsafe { PopVerified::new_unchecked(bad_pubkey_bytes) };
+        let result = bad_verified_bytes.verify_signature(&signature_bytes, message);
         assert!(result.is_err());
 
         // malleable signature
         let mut bad_signature_bytes = signature_bytes;
         bad_signature_bytes[0] ^= 0xFF;
 
-        let result = pubkey_bytes.verify_signature(&bad_signature_bytes, message);
+        let result = verified_bytes.verify_signature(&bad_signature_bytes, message);
         assert!(result.is_err());
     }
 
@@ -718,25 +742,31 @@ mod tests {
 
         // Verifying with an identity Pubkey must fail
         let id_pubkey_proj = PubkeyProjective::identity();
+        let id_pubkey_verified = unsafe { PopVerified::new_unchecked(id_pubkey_proj) };
         let valid_sig = keypair.sign(test_message);
 
-        let verify_result = id_pubkey_proj.verify_signature(&valid_sig, test_message);
+        let verify_result = id_pubkey_verified.verify_signature(&valid_sig, test_message);
         assert!(
             verify_result.is_err(),
             "Verification with identity public key must fail"
         );
 
         // Aggregate public keys evaluating to identity must fail
-        assert!(id_pubkey_proj
+        assert!(id_pubkey_verified
             .verify_signature(&id_sig_proj, test_message)
             .is_err());
 
         // Batch verification with an identity public key must fail
-        let pubkey_affine: PubkeyAffine = keypair.public;
+        let pubkey_affine: PubkeyAffine = *keypair.public;
         let id_pubkey_affine: PubkeyAffine = id_pubkey_proj.try_as_affine().unwrap();
 
-        let dyn_pubkeys: std::vec::Vec<&dyn AsPubkeyProjective> =
-            std::vec![&pubkey_affine, &id_pubkey_affine];
+        let p0: &dyn AsPubkeyProjective = &pubkey_affine;
+        let p1: &dyn AsPubkeyProjective = &id_pubkey_affine;
+
+        let pop0 = unsafe { PopVerified::ref_unchecked(p0) };
+        let pop1 = unsafe { PopVerified::ref_unchecked(p1) };
+
+        let dyn_pubkeys = std::vec![pop0, pop1];
         let dyn_signatures: std::vec::Vec<&dyn AsSignatureProjective> =
             std::vec![&valid_sig, &valid_sig];
 
@@ -771,15 +801,18 @@ mod tests {
         let message = b"hello";
 
         // An honest key and its exact opposite (negation)
-        let pk1 = PubkeyProjective::from(&keypair.public);
+        let pk1 = PubkeyProjective::from(*keypair.public);
         let mut pk2 = pk1;
         pk2.0 = -pk2.0;
+
+        let pop1 = unsafe { PopVerified::new_unchecked(pk1) };
+        let pop2 = unsafe { PopVerified::new_unchecked(pk2) };
 
         let id_sig = SignatureProjective::identity();
 
         // Verify aggregate should definitively fail because the aggregated pubkey evaluates to identity
         assert!(SignatureProjective::verify_aggregate(
-            [&pk1, &pk2].into_iter(),
+            [&pop1, &pop2].into_iter(),
             [&id_sig].into_iter(),
             message
         )

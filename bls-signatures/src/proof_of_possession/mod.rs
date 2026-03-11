@@ -24,7 +24,7 @@ mod tests {
         super::*,
         crate::{
             keypair::Keypair,
-            pubkey::{Pubkey, PubkeyAffine, PubkeyCompressed, PubkeyProjective, VerifiablePubkey},
+            pubkey::{Pubkey, PubkeyAffine, PubkeyCompressed, PubkeyProjective, VerifyPop},
         },
         core::str::FromStr,
         std::string::ToString,
@@ -35,14 +35,14 @@ mod tests {
         let keypair = Keypair::new();
         let proof_projective = keypair.proof_of_possession(None);
 
-        let pubkey_affine: PubkeyAffine = keypair.public;
+        let pubkey_affine: PubkeyAffine = *keypair.public;
         let pubkey_projective: PubkeyProjective = pubkey_affine.into();
-        let pubkey_uncompressed: Pubkey = pubkey_affine.into(); // [u8; 96]
-        let pubkey_compressed: PubkeyCompressed = pubkey_affine.into(); // [u8; 48]
+        let pubkey_uncompressed: Pubkey = pubkey_affine.into();
+        let pubkey_compressed: PubkeyCompressed = pubkey_affine.into();
 
         let proof_affine: ProofOfPossessionAffine = proof_projective.into();
-        let proof_uncompressed: ProofOfPossession = proof_affine.into(); // [u8; 96]
-        let proof_compressed: ProofOfPossessionCompressed = proof_affine.into(); // [u8; 48]
+        let proof_uncompressed: ProofOfPossession = proof_affine.into();
+        let proof_compressed: ProofOfPossessionCompressed = proof_affine.into();
 
         // Verify with PubkeyProjective
         assert!(proof_projective.verify(&pubkey_projective, None).is_ok());
@@ -206,6 +206,7 @@ mod tests {
         let id_pubkey_proj = PubkeyProjective::identity();
         let valid_pop = keypair.proof_of_possession(None);
 
+        // Verification uses VerifyPop, which is automatically implemented for PubkeyProjective
         let verify_result = id_pubkey_proj.verify_proof_of_possession(&valid_pop, None);
         assert!(
             verify_result.is_err(),

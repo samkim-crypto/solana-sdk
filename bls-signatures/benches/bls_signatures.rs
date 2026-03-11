@@ -5,7 +5,7 @@ use {
     solana_bls_signatures::{
         hash::{HashedMessage, PreparedHashedMessage},
         keypair::Keypair,
-        pubkey::{Pubkey, PubkeyProjective, VerifiablePubkey},
+        pubkey::{PopVerified, Pubkey, PubkeyProjective, VerifyPop, VerifySignature},
         signature::{Signature, SignatureAffineUnchecked, SignatureProjective},
     },
     std::hint::black_box,
@@ -35,7 +35,12 @@ fn bench_aggregate(c: &mut Criterion) {
     for num_validators in [2, 4, 8, 16, 32, 64, 128, 256].iter() {
         let message = b"test message";
         let keypairs: Vec<Keypair> = (0..*num_validators).map(|_| Keypair::new()).collect();
-        let pubkey_bytes: Vec<Pubkey> = keypairs.iter().map(|kp| Pubkey::from(kp.public)).collect();
+        let pubkey_bytes: Vec<Pubkey> =
+            keypairs.iter().map(|kp| Pubkey::from(*kp.public)).collect();
+        let verified_pubkeys: Vec<PopVerified<Pubkey>> = pubkey_bytes
+            .iter()
+            .map(|p| unsafe { PopVerified::new_unchecked(*p) })
+            .collect();
         let signature_bytes: Vec<Signature> = keypairs
             .iter()
             .map(|kp| Signature::from(kp.sign(message)))
@@ -94,7 +99,7 @@ fn bench_aggregate(c: &mut Criterion) {
 
         // Benchmark for aggregating multiple public keys
         group.bench_function(format!("{num_validators} pubkey aggregation"), |b| {
-            b.iter(|| black_box(PubkeyProjective::aggregate(pubkey_bytes.iter())));
+            b.iter(|| black_box(PubkeyProjective::aggregate(verified_pubkeys.iter())));
         });
 
         #[cfg(feature = "parallel")]
@@ -103,7 +108,9 @@ fn bench_aggregate(c: &mut Criterion) {
                 format!("{num_validators} parallel pubkey aggregation"),
                 |b| {
                     use rayon::prelude::*;
-                    b.iter(|| black_box(PubkeyProjective::par_aggregate(pubkey_bytes.par_iter())));
+                    b.iter(|| {
+                        black_box(PubkeyProjective::par_aggregate(verified_pubkeys.par_iter()))
+                    });
                 },
             );
         }
@@ -113,7 +120,7 @@ fn bench_aggregate(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     SignatureProjective::verify_aggregate(
-                        pubkey_bytes.iter(),
+                        verified_pubkeys.iter(),
                         signature_bytes.iter(),
                         message,
                     )
@@ -128,7 +135,7 @@ fn bench_aggregate(c: &mut Criterion) {
             |b| {
                 b.iter(|| {
                     SignatureProjective::par_verify_aggregate(
-                        &pubkey_bytes,
+                        &verified_pubkeys,
                         &signature_bytes,
                         message,
                     )
@@ -167,7 +174,7 @@ fn bench_batch_verification(c: &mut Criterion) {
 
     for num_validators in [64, 128, 256, 512, 1024, 2048].iter() {
         let keypairs: Vec<Keypair> = (0..*num_validators).map(|_| Keypair::new()).collect();
-        let pubkeys: Vec<Pubkey> = keypairs.iter().map(|kp| kp.public.into()).collect();
+        let pubkeys: Vec<Pubkey> = keypairs.iter().map(|kp| (*kp.public).into()).collect();
 
         // Create a unique message for each validator
         let messages: Vec<Vec<u8>> = (0..*num_validators)

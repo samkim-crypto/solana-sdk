@@ -138,7 +138,7 @@ impl PubkeyProjective {
         let aggregate = pubkeys
             .into_par_iter()
             .fold(
-                || Ok(PubkeyProjective::identity()),
+                || Ok::<PubkeyProjective, BlsError>(PubkeyProjective::identity()),
                 |acc, pubkey| {
                     let mut acc = acc?;
                     pubkey.0.add_to_accumulator(&mut acc)?;
@@ -428,18 +428,33 @@ impl_add_to_accumulator!(
 #[repr(transparent)]
 pub struct PopVerified<T: ?Sized>(pub(crate) T);
 
-impl<T> PopVerified<T> {
+impl<T: ?Sized> PopVerified<T> {
     /// Bypasses the cryptographic PoP check.
     ///
     /// # Safety
     /// Only use this if the public key was loaded from a trusted source
     /// where its Proof of Possession was previously verified (e.g., a local validator ledger).
-    pub unsafe fn new_unchecked(inner: T) -> Self {
+    pub unsafe fn new_unchecked(inner: T) -> Self
+    where
+        T: Sized,
+    {
         Self(inner)
     }
 
+    /// Bypasses the cryptographic PoP check, yielding a reference to the verified type.
+    ///
+    /// # Safety
+    /// Only use this if the public key was loaded from a trusted source.
+    pub unsafe fn ref_unchecked(inner: &T) -> &Self {
+        // Safety: PopVerified is #[repr(transparent)], so they have identical memory layouts.
+        &*(inner as *const T as *const Self)
+    }
+
     /// Consumes the wrapper, returning the inner type.
-    pub fn into_inner(self) -> T {
+    pub fn into_inner(self) -> T
+    where
+        T: Sized,
+    {
         self.0
     }
 }

@@ -176,7 +176,7 @@ mod tests {
         let public: PubkeyAffine = PubkeyProjective::from_secret(&secret).into();
         let keypair = Keypair::derive(ikm).unwrap();
         assert_eq!(keypair.secret, secret);
-        assert_eq!(keypair.public, public);
+        assert_eq!(*keypair.public, public);
     }
 
     #[test]
