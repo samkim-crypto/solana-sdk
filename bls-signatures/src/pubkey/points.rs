@@ -1,3 +1,4 @@
+use core::ops::Deref;
 #[cfg(all(feature = "parallel", not(target_os = "solana")))]
 use rayon::prelude::*;
 #[cfg(all(not(target_os = "solana"), feature = "std"))]
@@ -13,7 +14,6 @@ use {
         signature::{AsSignatureAffine, SignatureAffine},
     },
     blstrs::{Bls12, G1Affine, G1Projective, G2Prepared, Gt, Scalar},
-    core::ops::Deref,
     group::{prime::PrimeCurveAffine, Group},
     pairing::{MillerLoopResult, MultiMillerLoop},
 };

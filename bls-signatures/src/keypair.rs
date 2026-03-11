@@ -188,7 +188,7 @@ mod tests {
         let keypair = Keypair::derive_from_signer(&solana_keypair, b"alpenglow-vote").unwrap();
 
         assert_eq!(keypair.secret, secret);
-        assert_eq!(keypair.public, public);
+        assert_eq!(keypair.public, PopVerified(public));
     }
 
     #[test]

@@ -555,6 +555,7 @@ macro_rules! impl_unchecked_conversions {
     };
 }
 
+#[cfg(not(target_os = "solana"))]
 macro_rules! impl_pubkey_wrapper_delegations {
     ($wrapper:ident) => {
         #[cfg(not(target_os = "solana"))]
