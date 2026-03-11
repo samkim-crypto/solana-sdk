@@ -14,7 +14,9 @@ pub use crate::{
     proof_of_possession::{
         AsProofOfPossessionProjective, ProofOfPossessionProjective, VerifiableProofOfPossession,
     },
-    pubkey::{AsPubkeyProjective, PubkeyAffineUnchecked, PubkeyProjective, VerifiablePubkey},
+    pubkey::{
+        AsPubkeyProjective, PubkeyAffineUnchecked, PubkeyProjective, VerifyPop, VerifySignature,
+    },
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::{
         AsSignatureProjective, SignatureAffineUnchecked, SignatureProjective, VerifiableSignature,

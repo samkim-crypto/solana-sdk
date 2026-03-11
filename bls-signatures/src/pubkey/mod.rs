@@ -8,8 +8,8 @@ pub use bytes::{
 };
 #[cfg(not(target_os = "solana"))]
 pub use points::{
-    AddToPubkeyProjective, AsPubkeyAffine, AsPubkeyProjective, PubkeyAffine, PubkeyAffineUnchecked,
-    PubkeyProjective, VerifiablePubkey,
+    AddToPubkeyProjective, AggregatePubkey, AsPubkeyAffine, AsPubkeyProjective, PopVerified,
+    PubkeyAffine, PubkeyAffineUnchecked, PubkeyProjective, VerifyPop, VerifySignature,
 };
 
 #[cfg(test)]

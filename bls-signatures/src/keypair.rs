@@ -1,7 +1,9 @@
 use crate::{
     error::BlsError,
     proof_of_possession::ProofOfPossessionProjective,
-    pubkey::{PubkeyAffine, PubkeyProjective, VerifiablePubkey, BLS_PUBLIC_KEY_AFFINE_SIZE},
+    pubkey::{
+        PopVerified, PubkeyAffine, PubkeyProjective, VerifySignature, BLS_PUBLIC_KEY_AFFINE_SIZE,
+    },
     secret_key::{SecretKey, BLS_SECRET_KEY_SIZE},
     signature::{AsSignatureAffine, SignatureProjective},
 };
@@ -25,7 +27,7 @@ pub const BLS_KEYPAIR_SIZE: usize = BLS_SECRET_KEY_SIZE + BLS_PUBLIC_KEY_AFFINE_
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Keypair {
     pub secret: SecretKey,
-    pub public: PubkeyAffine,
+    pub public: PopVerified<PubkeyAffine>,
 }
 
 impl Keypair {
@@ -33,14 +35,14 @@ impl Keypair {
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         let secret = SecretKey::new();
-        let public = PubkeyProjective::from_secret(&secret).into();
+        let public = PopVerified(PubkeyProjective::from_secret(&secret).into());
         Self { secret, public }
     }
 
     /// Derive a `Keypair` from a seed (input key material)
     pub fn derive(ikm: &[u8]) -> Result<Self, BlsError> {
         let secret = SecretKey::derive(ikm)?;
-        let public = PubkeyProjective::from_secret(&secret).into();
+        let public = PopVerified(PubkeyProjective::from_secret(&secret).into());
         Ok(Self { secret, public })
     }
 
@@ -48,7 +50,7 @@ impl Keypair {
     #[cfg(feature = "solana-signer-derive")]
     pub fn derive_from_signer(signer: &dyn Signer, public_seed: &[u8]) -> Result<Self, BlsError> {
         let secret = SecretKey::derive_from_signer(signer, public_seed)?;
-        let public = PubkeyProjective::from_secret(&secret).into();
+        let public = PopVerified(PubkeyProjective::from_secret(&secret).into());
         Ok(Self { secret, public })
     }
 
@@ -96,7 +98,10 @@ impl TryFrom<&[u8]> for Keypair {
             return Err(BlsError::ParseFromBytes);
         }
 
-        Ok(Self { secret, public })
+        Ok(Self {
+            secret,
+            public: PopVerified(public),
+        })
     }
 }
 

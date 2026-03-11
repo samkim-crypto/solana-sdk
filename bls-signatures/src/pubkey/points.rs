@@ -13,6 +13,7 @@ use {
         signature::{AsSignatureAffine, SignatureAffine},
     },
     blstrs::{Bls12, G1Affine, G1Projective, G2Prepared, Gt, Scalar},
+    core::ops::Deref,
     group::{prime::PrimeCurveAffine, Group},
     pairing::{MillerLoopResult, MultiMillerLoop},
 };
@@ -51,48 +52,43 @@ impl PubkeyProjective {
         Self(G1Projective::generator() * secret.0)
     }
 
-    /// Aggregate a list of public keys into an existing aggregate
-    ///
-    /// Warning: This function performs mathematical point addition. It does not
-    /// perform public key validation (such as identity point checks) or Proof of
-    /// Possession (PoP) verification.
+    /// Aggregate a list of Proof-of-Possession verified public keys into an
+    /// existing aggregate.
     #[allow(clippy::arithmetic_side_effects)]
     pub fn aggregate_with<'a, P: AddToPubkeyProjective + ?Sized + 'a>(
         &mut self,
-        pubkeys: impl Iterator<Item = &'a P>,
+        pubkeys: impl Iterator<Item = &'a PopVerified<P>>,
     ) -> Result<(), BlsError> {
         for pubkey in pubkeys {
-            pubkey.add_to_accumulator(self)?;
+            // Access the inner key via .0
+            pubkey.0.add_to_accumulator(self)?;
         }
         Ok(())
     }
 
-    /// Aggregate a list of public keys
-    ///
-    /// Warning: This function performs mathematical point addition. It does not
-    /// perform public key validation (such as identity point checks) or Proof of
-    /// Possession (PoP) verification.
+    /// Aggregate a list of Proof-of-Possession verified public keys.
     #[allow(clippy::arithmetic_side_effects)]
     pub fn aggregate<'a, P: AddToPubkeyProjective + ?Sized + 'a>(
-        pubkeys: impl Iterator<Item = &'a P>,
-    ) -> Result<PubkeyProjective, BlsError> {
+        pubkeys: impl Iterator<Item = &'a PopVerified<P>>,
+    ) -> Result<AggregatePubkey<PubkeyProjective>, BlsError> {
         let mut aggregate = PubkeyProjective::identity();
         let mut count = 0;
         for pubkey in pubkeys {
-            pubkey.add_to_accumulator(&mut aggregate)?;
+            pubkey.0.add_to_accumulator(&mut aggregate)?;
             count += 1;
         }
         if count == 0 {
             return Err(BlsError::EmptyAggregation);
         }
-        Ok(aggregate)
+        Ok(AggregatePubkey(aggregate))
     }
 
+    /// Aggregate a list of Proof-of-Possession verified public keys with scalars.
     #[allow(clippy::arithmetic_side_effects)]
     pub fn aggregate_with_scalars<'a, P: AddToPubkeyProjective + ?Sized + 'a>(
-        pubkeys: impl ExactSizeIterator<Item = &'a P>,
+        pubkeys: impl ExactSizeIterator<Item = &'a PopVerified<P>>,
         scalars: impl ExactSizeIterator<Item = &'a Scalar>,
-    ) -> Result<PubkeyProjective, BlsError> {
+    ) -> Result<AggregatePubkey<PubkeyProjective>, BlsError> {
         if pubkeys.len() != scalars.len() {
             return Err(BlsError::InputLengthMismatch);
         }
@@ -106,51 +102,46 @@ impl PubkeyProjective {
 
         for (pubkey, scalar) in pubkeys.zip(scalars) {
             let mut point = PubkeyProjective::identity();
-            pubkey.add_to_accumulator(&mut point)?;
+            pubkey.0.add_to_accumulator(&mut point)?;
 
             points.push(point.0);
             scalar_values.push(*scalar);
         }
 
-        Ok(PubkeyProjective(G1Projective::multi_exp(
+        Ok(AggregatePubkey(PubkeyProjective(G1Projective::multi_exp(
             &points,
             &scalar_values,
-        )))
+        ))))
     }
 
-    /// Aggregate a list of public keys into an existing aggregate
-    ///
-    /// Warning: This function performs mathematical point addition. It does not
-    /// perform public key validation (such as identity point checks) or Proof of
-    /// Possession (PoP) verification.
+    /// Aggregate a list of Proof-of-Possession verified public keys into an
+    /// existing aggregate (Parallel)
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
     pub fn par_aggregate_with<'a, P: AddToPubkeyProjective + Sync + 'a>(
         &mut self,
-        pubkeys: impl ParallelIterator<Item = &'a P>,
+        pubkeys: impl ParallelIterator<Item = &'a PopVerified<P>>,
     ) -> Result<(), BlsError> {
         let aggregate = PubkeyProjective::par_aggregate(pubkeys)?;
-        self.0 += &aggregate.0;
+        // `aggregate` is an `AggregatePubkey<PubkeyProjective>`, so we unwrap it twice
+        // to get `G1Projective`
+        self.0 += &aggregate.0 .0;
         Ok(())
     }
 
-    /// Aggregate a list of public keys
-    ///
-    /// Warning: This function performs mathematical point addition. It does not
-    /// perform public key validation (such as identity point checks) or Proof of
-    /// Possession (PoP) verification.
+    /// Aggregate a list of Proof-of-Possession verified public keys (Parallel)
     #[allow(clippy::arithmetic_side_effects)]
     #[cfg(feature = "parallel")]
     pub fn par_aggregate<'a, P: AddToPubkeyProjective + Sync + 'a>(
-        pubkeys: impl ParallelIterator<Item = &'a P>,
-    ) -> Result<PubkeyProjective, BlsError> {
-        pubkeys
+        pubkeys: impl ParallelIterator<Item = &'a PopVerified<P>>,
+    ) -> Result<AggregatePubkey<PubkeyProjective>, BlsError> {
+        let aggregate = pubkeys
             .into_par_iter()
             .fold(
                 || Ok(PubkeyProjective::identity()),
                 |acc, pubkey| {
                     let mut acc = acc?;
-                    pubkey.add_to_accumulator(&mut acc)?;
+                    pubkey.0.add_to_accumulator(&mut acc)?;
                     Ok(acc)
                 },
             )
@@ -160,7 +151,9 @@ impl PubkeyProjective {
                 a_val.0 += b_val.0;
                 Ok(a_val)
             })
-            .ok_or(BlsError::EmptyAggregation)?
+            .ok_or(BlsError::EmptyAggregation)??;
+
+        Ok(AggregatePubkey(aggregate))
     }
 }
 
@@ -171,45 +164,10 @@ pub trait AsPubkeyAffine {
     fn try_as_affine(&self) -> Result<PubkeyAffine, BlsError>;
 }
 
-/// A trait that provides verification methods to any convertible public key type.
+/// A trait that provides Proof of Possession verification methods to any
+/// convertible public key type.
 #[cfg(not(target_os = "solana"))]
-pub trait VerifiablePubkey: AsPubkeyAffine {
-    /// Uses this public key to verify any convertible signature type.
-    fn verify_signature<S: AsSignatureAffine>(
-        &self,
-        signature: &S,
-        message: &[u8],
-    ) -> Result<(), BlsError> {
-        let hashed_message = HashedMessage::new(message);
-        self.verify_signature_pre_hashed(signature, &hashed_message)
-    }
-
-    /// Uses this public key to verify any convertible signature type using a
-    /// pre-hashed message.
-    fn verify_signature_pre_hashed<S: AsSignatureAffine>(
-        &self,
-        signature: &S,
-        hashed_message: &HashedMessage,
-    ) -> Result<(), BlsError> {
-        let prepared_hashed_message = PreparedHashedMessage::from_hashed_message(hashed_message);
-        self.verify_signature_prepared(signature, &prepared_hashed_message)
-    }
-
-    /// Uses this public key to verify any convertible signature type using a
-    /// pre-hashed and pairing-prepared message.
-    fn verify_signature_prepared<S: AsSignatureAffine>(
-        &self,
-        signature: &S,
-        prepared_hashed_message: &PreparedHashedMessage,
-    ) -> Result<(), BlsError> {
-        let pubkey_affine = self.try_as_affine()?;
-        let signature_affine = signature.try_as_affine()?;
-        pubkey_affine
-            ._verify_signature_prepared(&signature_affine, &prepared_hashed_message.prepared)
-            .then_some(())
-            .ok_or(BlsError::VerificationFailed)
-    }
-
+pub trait VerifyPop: AsPubkeyAffine + Sized {
     /// Uses this public key to verify any convertible proof of possession type.
     fn verify_proof_of_possession<P: AsProofOfPossessionAffine>(
         &self,
@@ -235,6 +193,59 @@ pub trait VerifiablePubkey: AsPubkeyAffine {
         let proof_affine = proof.try_as_affine()?;
         pubkey_affine
             ._verify_proof_of_possession(&proof_affine, hashed_payload)
+            .then_some(())
+            .ok_or(BlsError::VerificationFailed)
+    }
+
+    /// Verifies the proof of possession and, upon success, returns a `PopVerified`
+    /// wrapper.
+    fn verify_and_wrap_pop<P: AsProofOfPossessionAffine>(
+        self,
+        proof: &P,
+        payload: Option<&[u8]>,
+    ) -> Result<PopVerified<Self>, BlsError> {
+        self.verify_proof_of_possession(proof, payload)?;
+        Ok(PopVerified(self))
+    }
+}
+
+// Blanket implementation so any raw key can attempt to prove itself
+#[cfg(not(target_os = "solana"))]
+impl<T: AsPubkeyAffine> VerifyPop for T {}
+
+/// A trait that provides signature verification methods exclusively to safe public key types.
+#[cfg(not(target_os = "solana"))]
+pub trait VerifySignature: AsPubkeyAffine {
+    /// Uses this safe public key to verify any convertible signature type.
+    fn verify_signature<S: AsSignatureAffine>(
+        &self,
+        signature: &S,
+        message: &[u8],
+    ) -> Result<(), BlsError> {
+        let hashed_message = HashedMessage::new(message);
+        self.verify_signature_pre_hashed(signature, &hashed_message)
+    }
+
+    /// Uses this safe public key to verify any convertible signature type using a pre-hashed message.
+    fn verify_signature_pre_hashed<S: AsSignatureAffine>(
+        &self,
+        signature: &S,
+        hashed_message: &HashedMessage,
+    ) -> Result<(), BlsError> {
+        let prepared_hashed_message = PreparedHashedMessage::from_hashed_message(hashed_message);
+        self.verify_signature_prepared(signature, &prepared_hashed_message)
+    }
+
+    /// Uses this safe public key to verify any convertible signature type using a prepared message.
+    fn verify_signature_prepared<S: AsSignatureAffine>(
+        &self,
+        signature: &S,
+        prepared_hashed_message: &PreparedHashedMessage,
+    ) -> Result<(), BlsError> {
+        let pubkey_affine = self.try_as_affine()?;
+        let signature_affine = signature.try_as_affine()?;
+        pubkey_affine
+            ._verify_signature_prepared(&signature_affine, &prepared_hashed_message.prepared)
             .then_some(())
             .ok_or(BlsError::VerificationFailed)
     }
@@ -326,9 +337,6 @@ impl PubkeyAffine {
     }
 }
 
-#[cfg(not(target_os = "solana"))]
-impl<T: AsPubkeyAffine> VerifiablePubkey for T {}
-
 /// A trait for types that can be efficiently added to a PubkeyProjective accumulator.
 #[cfg(not(target_os = "solana"))]
 pub trait AddToPubkeyProjective {
@@ -414,3 +422,51 @@ impl_add_to_accumulator!(
     PubkeyAffineUnchecked,
     affine
 );
+
+/// A wrapper indicating that the inner public key type has been Proof-of-Possession (PoP) verified.
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
+#[repr(transparent)]
+pub struct PopVerified<T: ?Sized>(pub(crate) T);
+
+impl<T> PopVerified<T> {
+    /// Bypasses the cryptographic PoP check.
+    ///
+    /// # Safety
+    /// Only use this if the public key was loaded from a trusted source
+    /// where its Proof of Possession was previously verified (e.g., a local validator ledger).
+    pub unsafe fn new_unchecked(inner: T) -> Self {
+        Self(inner)
+    }
+
+    /// Consumes the wrapper, returning the inner type.
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+impl<T: ?Sized> Deref for PopVerified<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+/// A wrapper indicating that this is an aggregate of exclusively PoP-verified public keys.
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[repr(transparent)]
+pub struct AggregatePubkey<T: ?Sized>(pub(crate) T);
+
+impl<T: ?Sized> Deref for AggregatePubkey<T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+#[cfg(not(target_os = "solana"))]
+impl_pubkey_wrapper_delegations!(PopVerified);
+
+#[cfg(not(target_os = "solana"))]
+impl_pubkey_wrapper_delegations!(AggregatePubkey);

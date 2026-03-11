@@ -554,3 +554,34 @@ macro_rules! impl_unchecked_conversions {
         }
     };
 }
+
+macro_rules! impl_pubkey_wrapper_delegations {
+    ($wrapper:ident) => {
+        #[cfg(not(target_os = "solana"))]
+        impl<T: AsPubkeyAffine + ?Sized> VerifySignature for $wrapper<T> {}
+
+        #[cfg(not(target_os = "solana"))]
+        impl<T: AsPubkeyAffine + ?Sized> AsPubkeyAffine for $wrapper<T> {
+            fn try_as_affine(&self) -> Result<PubkeyAffine, crate::error::BlsError> {
+                self.0.try_as_affine()
+            }
+        }
+
+        #[cfg(not(target_os = "solana"))]
+        impl<T: AsPubkeyProjective + ?Sized> AsPubkeyProjective for $wrapper<T> {
+            fn try_as_projective(&self) -> Result<PubkeyProjective, crate::error::BlsError> {
+                self.0.try_as_projective()
+            }
+        }
+
+        #[cfg(not(target_os = "solana"))]
+        impl<T: AddToPubkeyProjective + ?Sized> AddToPubkeyProjective for $wrapper<T> {
+            fn add_to_accumulator(
+                &self,
+                acc: &mut PubkeyProjective,
+            ) -> Result<(), crate::error::BlsError> {
+                self.0.add_to_accumulator(acc)
+            }
+        }
+    };
+}
