@@ -1,15 +1,24 @@
+#[cfg(not(target_os = "solana"))]
+pub mod aggregate;
 pub mod bytes;
+#[cfg(not(target_os = "solana"))]
 pub mod conversion;
+#[cfg(not(target_os = "solana"))]
 pub mod points;
+#[cfg(not(target_os = "solana"))]
+pub mod verify;
 
 pub use bytes::{
     Pubkey, PubkeyCompressed, BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE, BLS_PUBLIC_KEY_AFFINE_SIZE,
     BLS_PUBLIC_KEY_COMPRESSED_BASE64_SIZE, BLS_PUBLIC_KEY_COMPRESSED_SIZE,
 };
 #[cfg(not(target_os = "solana"))]
-pub use points::{
-    AddToPubkeyProjective, AggregatePubkey, AsPubkeyAffine, AsPubkeyProjective, PopVerified,
-    PubkeyAffine, PubkeyAffineUnchecked, PubkeyProjective, VerifyPop, VerifySignature,
+pub use {
+    points::{
+        AddToPubkeyProjective, AggregatePubkey, AsPubkeyAffine, AsPubkeyProjective, PopVerified,
+        PubkeyAffine, PubkeyAffineUnchecked, PubkeyProjective,
+    },
+    verify::{VerifyPop, VerifySignature},
 };
 
 #[cfg(test)]

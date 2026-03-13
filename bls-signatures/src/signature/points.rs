@@ -1,5 +1,5 @@
 #[cfg(all(not(target_os = "solana"), feature = "std"))]
-use crate::pubkey::points::NEG_G1_GENERATOR_AFFINE;
+use crate::pubkey::verify::NEG_G1_GENERATOR_AFFINE;
 #[cfg(not(target_os = "solana"))]
 use {
     crate::{
