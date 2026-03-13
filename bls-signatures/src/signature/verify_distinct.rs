@@ -92,8 +92,13 @@ impl SignatureProjective {
         (grouped_pubkeys_affine, grouped_prepared)
     }
 
-    /// Verifies an aggregated signature over a set of distinct messages and
+    /// Verifies an aggregated signature over a set of multiple messages and
     /// public keys.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the iterator. It does *not* imply that the
+    /// messages must be unique to prevent rogue-key attacks. The messages can be
+    /// identical or different.
     pub fn verify_distinct<'a, P, S>(
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         signatures: impl ExactSizeIterator<Item = &'a S>,
@@ -118,8 +123,12 @@ impl SignatureProjective {
         )
     }
 
-    /// Verifies an aggregated signature over a set of distinct pre-hashed
+    /// Verifies an aggregated signature over a set of multiple pre-hashed
     /// messages and public keys.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the iterator. It does *not* imply that the
+    /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_pre_hashed<'a, 'b, P, S>(
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         signatures: impl ExactSizeIterator<Item = &'a S>,
@@ -143,8 +152,12 @@ impl SignatureProjective {
         )
     }
 
-    /// Verifies an aggregated signature over a set of distinct pre-hashed and
+    /// Verifies an aggregated signature over a set of multiple pre-hashed and
     /// prepared messages and public keys.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the iterator. It does *not* imply that the
+    /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_prepared<'a, 'b, P, S>(
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         signatures: impl ExactSizeIterator<Item = &'a S>,
@@ -170,8 +183,12 @@ impl SignatureProjective {
         )
     }
 
-    /// Verifies a pre-aggregated signature over a set of distinct messages and
+    /// Verifies a pre-aggregated signature over a set of multiple messages and
     /// public keys.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the iterator. It does *not* imply that the
+    /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_aggregated<'a, P, S>(
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         aggregate_signature: &S,
@@ -195,8 +212,12 @@ impl SignatureProjective {
         )
     }
 
-    /// Verifies a pre-aggregated signature over a set of distinct pre-hashed
+    /// Verifies a pre-aggregated signature over a set of multiple pre-hashed
     /// messages and public keys.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the iterator. It does *not* imply that the
+    /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_aggregated_pre_hashed<'a, 'b, P, S>(
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         aggregate_signature: &S,
@@ -260,7 +281,7 @@ impl SignatureProjective {
             .ok_or(BlsError::VerificationFailed)
     }
 
-    /// Verifies a pre-aggregated signature over a set of distinct pre-hashed and
+    /// Verifies a pre-aggregated signature over a set of multiple pre-hashed and
     /// prepared messages and public keys.
     ///
     /// Entries with identical message hashes are merged internally by summing
@@ -268,6 +289,10 @@ impl SignatureProjective {
     ///
     /// Security note: rogue-key concerns are not relevant here because keys are
     /// assumed to be PoP-validated.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the iterator. It does *not* imply that the
+    /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_aggregated_prepared<'a, 'b, P, S>(
         public_keys: impl ExactSizeIterator<Item = &'a P>,
         aggregate_signature: &S,
@@ -327,8 +352,12 @@ impl SignatureProjective {
             .ok_or(BlsError::VerificationFailed)
     }
 
-    /// Verifies a set of signatures over a set of distinct messages and
+    /// Verifies a set of signatures over a set of multiple messages and
     /// public keys in parallel.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the slice. It does *not* imply that the messages
+    /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct<P, S>(
         public_keys: &[P],
@@ -359,6 +388,10 @@ impl SignatureProjective {
 
     /// Verifies a set of signatures over a set of distinct pre-hashed messages
     /// and public keys in parallel.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the slice. It does *not* imply that the messages
+    /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_pre_hashed<P, S>(
         public_keys: &[P],
@@ -385,6 +418,10 @@ impl SignatureProjective {
 
     /// Verifies a set of signatures over a set of distinct pre-hashed and
     /// prepared messages and public keys in parallel.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the slice. It does *not* imply that the messages
+    /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_prepared<P, S>(
         public_keys: &[P],
@@ -417,6 +454,10 @@ impl SignatureProjective {
 
     /// In parallel, verifies a pre-aggregated signature over a set of distinct
     /// messages and public keys.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the slice. It does *not* imply that the messages
+    /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_aggregated<P, S>(
         public_keys: &[P],
@@ -446,6 +487,10 @@ impl SignatureProjective {
 
     /// In parallel, verifies a pre-aggregated signature over a set of distinct
     /// pre-hashed messages and public keys.
+    ///
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the slice. It does *not* imply that the messages
+    /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_aggregated_pre_hashed<P, S>(
         public_keys: &[P],
@@ -517,8 +562,9 @@ impl SignatureProjective {
     /// Entries with identical message hashes are merged internally by summing
     /// their public keys, reducing pairing terms.
     ///
-    /// Security note: rogue-key concerns are not relevant here because keys are
-    /// assumed to be PoP-validated.
+    /// Note: The term "distinct" indicates that each public key is paired with a
+    /// corresponding message from the slice. It does *not* imply that the messages
+    /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_aggregated_prepared<P, S>(
         public_keys: &[P],

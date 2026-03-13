@@ -1,3 +1,27 @@
+//! BLS public key types and operations.
+//!
+//! This module provides the core representations of BLS public keys on the
+//! BLS12-381 curve. It includes various forms of public keys to optimize for
+//! different operations:
+//!
+//! - **Bytes** (`Pubkey`, `PubkeyCompressed`): For storage and serialization.
+//! - **Points** (`PubkeyProjective`, `PubkeyAffine`): For mathematical operations.
+//!   Projective points are faster for aggregation (addition), while affine
+//!   points are required for pairing operations (verification).
+//!
+//! To prevent rogue key attacks during aggregation, this module also introduces
+//! the `PopVerified` wrapper, ensuring that a public key has a valid Proof of
+//! Possession before it can be used in an aggregated context.
+//!
+//! # Organization
+//! - `bytes`: Raw byte definitions and base64 string conversions.
+//! - `points`: Mathematical curve point wrappers and state traits.
+//! - `conversion`: Implementations to losslessly convert between bytes, affine,
+//!   and projective types.
+//! - `aggregate`: Logic for aggregating multiple `PopVerified` public keys.
+//! - `verify`: Traits (`VerifyPop`, `VerifySignature`) and multi-miller loop logic
+//!   for verification.
+
 #[cfg(not(target_os = "solana"))]
 pub mod aggregate;
 pub mod bytes;
