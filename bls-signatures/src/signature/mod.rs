@@ -1,15 +1,26 @@
+#[cfg(not(target_os = "solana"))]
+pub mod aggregate;
 pub mod bytes;
+#[cfg(not(target_os = "solana"))]
 pub mod conversion;
+#[cfg(not(target_os = "solana"))]
 pub mod points;
+#[cfg(not(target_os = "solana"))]
+pub mod verify;
+#[cfg(not(target_os = "solana"))]
+pub mod verify_distinct;
 
 pub use bytes::{
     Signature, SignatureCompressed, BLS_SIGNATURE_AFFINE_BASE64_SIZE, BLS_SIGNATURE_AFFINE_SIZE,
     BLS_SIGNATURE_COMPRESSED_BASE64_SIZE, BLS_SIGNATURE_COMPRESSED_SIZE,
 };
 #[cfg(not(target_os = "solana"))]
-pub use points::{
-    AddToSignatureProjective, AsSignatureAffine, AsSignatureProjective, SignatureAffine,
-    SignatureAffineUnchecked, SignatureProjective, VerifiableSignature,
+pub use {
+    points::{
+        AddToSignatureProjective, AsSignatureAffine, AsSignatureProjective, SignatureAffine,
+        SignatureAffineUnchecked, SignatureProjective,
+    },
+    verify::VerifiableSignature,
 };
 
 #[cfg(test)]
