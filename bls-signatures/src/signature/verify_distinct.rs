@@ -4,7 +4,7 @@ use {
     crate::{
         error::BlsError,
         hash::{HashedMessage, PreparedHashedMessage},
-        pubkey::AsPubkeyAffine,
+        pubkey::{AsPubkeyAffine, PopVerified},
         signature::points::{AddToSignatureProjective, AsSignatureAffine, SignatureProjective},
     },
     blstrs::{Bls12, G1Affine, G1Projective, G2Prepared, Gt},
@@ -100,7 +100,7 @@ impl SignatureProjective {
     /// messages must be unique to prevent rogue-key attacks. The messages can be
     /// identical or different.
     pub fn verify_distinct<'a, P, S>(
-        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        public_keys: impl ExactSizeIterator<Item = &'a PopVerified<P>>,
         signatures: impl ExactSizeIterator<Item = &'a S>,
         messages: impl ExactSizeIterator<Item = &'a [u8]>,
     ) -> Result<(), BlsError>
@@ -130,7 +130,7 @@ impl SignatureProjective {
     /// corresponding message from the iterator. It does *not* imply that the
     /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_pre_hashed<'a, 'b, P, S>(
-        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        public_keys: impl ExactSizeIterator<Item = &'a PopVerified<P>>,
         signatures: impl ExactSizeIterator<Item = &'a S>,
         hashed_messages: impl ExactSizeIterator<Item = &'b HashedMessage>,
     ) -> Result<(), BlsError>
@@ -159,7 +159,7 @@ impl SignatureProjective {
     /// corresponding message from the iterator. It does *not* imply that the
     /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_prepared<'a, 'b, P, S>(
-        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        public_keys: impl ExactSizeIterator<Item = &'a PopVerified<P>>,
         signatures: impl ExactSizeIterator<Item = &'a S>,
         prepared_hashed_messages: impl ExactSizeIterator<Item = &'b PreparedHashedMessage>,
     ) -> Result<(), BlsError>
@@ -190,7 +190,7 @@ impl SignatureProjective {
     /// corresponding message from the iterator. It does *not* imply that the
     /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_aggregated<'a, P, S>(
-        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        public_keys: impl ExactSizeIterator<Item = &'a PopVerified<P>>,
         aggregate_signature: &S,
         messages: impl ExactSizeIterator<Item = &'a [u8]>,
     ) -> Result<(), BlsError>
@@ -219,7 +219,7 @@ impl SignatureProjective {
     /// corresponding message from the iterator. It does *not* imply that the
     /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_aggregated_pre_hashed<'a, 'b, P, S>(
-        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        public_keys: impl ExactSizeIterator<Item = &'a PopVerified<P>>,
         aggregate_signature: &S,
         hashed_messages: impl ExactSizeIterator<Item = &'b HashedMessage>,
     ) -> Result<(), BlsError>
@@ -294,7 +294,7 @@ impl SignatureProjective {
     /// corresponding message from the iterator. It does *not* imply that the
     /// messages must be unique. The messages can be identical or different.
     pub fn verify_distinct_aggregated_prepared<'a, 'b, P, S>(
-        public_keys: impl ExactSizeIterator<Item = &'a P>,
+        public_keys: impl ExactSizeIterator<Item = &'a PopVerified<P>>,
         aggregate_signature: &S,
         prepared_hashed_messages: impl ExactSizeIterator<Item = &'b PreparedHashedMessage>,
     ) -> Result<(), BlsError>
@@ -360,7 +360,7 @@ impl SignatureProjective {
     /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct<P, S>(
-        public_keys: &[P],
+        public_keys: &[PopVerified<P>],
         signatures: &[S],
         messages: &[&[u8]],
     ) -> Result<(), BlsError>
@@ -394,7 +394,7 @@ impl SignatureProjective {
     /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_pre_hashed<P, S>(
-        public_keys: &[P],
+        public_keys: &[PopVerified<P>],
         signatures: &[S],
         hashed_messages: &[HashedMessage],
     ) -> Result<(), BlsError>
@@ -424,7 +424,7 @@ impl SignatureProjective {
     /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_prepared<P, S>(
-        public_keys: &[P],
+        public_keys: &[PopVerified<P>],
         signatures: &[S],
         prepared_hashed_messages: &[PreparedHashedMessage],
     ) -> Result<(), BlsError>
@@ -460,7 +460,7 @@ impl SignatureProjective {
     /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_aggregated<P, S>(
-        public_keys: &[P],
+        public_keys: &[PopVerified<P>],
         aggregate_signature: &S,
         messages: &[&[u8]],
     ) -> Result<(), BlsError>
@@ -493,7 +493,7 @@ impl SignatureProjective {
     /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_aggregated_pre_hashed<P, S>(
-        public_keys: &[P],
+        public_keys: &[PopVerified<P>],
         aggregate_signature: &S,
         hashed_messages: &[HashedMessage],
     ) -> Result<(), BlsError>
@@ -567,7 +567,7 @@ impl SignatureProjective {
     /// must be unique. The messages can be identical or different.
     #[cfg(feature = "parallel")]
     pub fn par_verify_distinct_aggregated_prepared<P, S>(
-        public_keys: &[P],
+        public_keys: &[PopVerified<P>],
         aggregate_signature: &S,
         prepared_hashed_messages: &[PreparedHashedMessage],
     ) -> Result<(), BlsError>

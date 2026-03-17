@@ -288,9 +288,9 @@ mod tests {
 
         // Success cases
         let pubkeys = [
-            Pubkey::from(*keypair0.public),
-            Pubkey::from(*keypair1.public),
-            Pubkey::from(*keypair2.public),
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair0.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair1.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair2.public)) },
         ];
         let messages: Vec<&[u8]> = std::vec![message0, message1, message2];
         let signatures = std::vec![signature0, signature1, signature2];
@@ -341,9 +341,9 @@ mod tests {
 
         let wrong_keypair = Keypair::new();
         let wrong_pubkeys = [
-            Pubkey::from(*keypair0.public),
-            Pubkey::from(*wrong_keypair.public),
-            Pubkey::from(*keypair2.public),
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair0.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*wrong_keypair.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair2.public)) },
         ];
         assert!(SignatureProjective::verify_distinct(
             wrong_pubkeys.iter(),
@@ -379,7 +379,7 @@ mod tests {
         assert_eq!(err, BlsError::InputLengthMismatch);
 
         let err = SignatureProjective::verify_distinct(
-            empty::<&Pubkey>(),
+            empty::<&PopVerified<Pubkey>>(),
             empty::<&Signature>(),
             empty(),
         )
@@ -401,9 +401,9 @@ mod tests {
         let signature2: Signature = keypair2.sign(message).into();
 
         let pubkeys = [
-            Pubkey::from(*keypair0.public),
-            Pubkey::from(*keypair1.public),
-            Pubkey::from(*keypair2.public),
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair0.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair1.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair2.public)) },
         ];
         let signatures = [signature0, signature1, signature2];
 
@@ -445,9 +445,9 @@ mod tests {
         let signature2: Signature = keypair2.sign(unique_message).into();
 
         let pubkeys = [
-            Pubkey::from(*keypair0.public),
-            Pubkey::from(*keypair1.public),
-            Pubkey::from(*keypair2.public),
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair0.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair1.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair2.public)) },
         ];
         let signatures = [signature0, signature1, signature2];
         let messages: Vec<&[u8]> = std::vec![shared_message, shared_message, unique_message];
@@ -635,9 +635,9 @@ mod tests {
 
         // Use Pubkey (bytes) to match par_verify_distinct signature
         let pubkeys = [
-            Pubkey::from(*keypair0.public),
-            Pubkey::from(*keypair1.public),
-            Pubkey::from(*keypair2.public),
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair0.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair1.public)) },
+            unsafe { PopVerified::new_unchecked(Pubkey::from(*keypair2.public)) },
         ];
         let messages_refs: Vec<&[u8]> = std::vec![message0, message1, message2];
         let signatures = [signature0, signature1, signature2];
@@ -815,7 +815,10 @@ mod tests {
             "Aggregate verification containing an identity public key must fail"
         );
 
-        let pubkeys = [pubkey_affine, id_pubkey_affine];
+        let pubkeys = [
+            unsafe { PopVerified::new_unchecked(pubkey_affine) },
+            unsafe { PopVerified::new_unchecked(id_pubkey_affine) },
+        ];
         let signatures = [Signature::from(&valid_sig), Signature::from(&valid_sig)];
         let messages: std::vec::Vec<&[u8]> = std::vec![b"msg1", b"msg2"];
 

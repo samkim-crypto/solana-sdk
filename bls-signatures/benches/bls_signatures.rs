@@ -174,7 +174,10 @@ fn bench_batch_verification(c: &mut Criterion) {
 
     for num_validators in [64, 128, 256, 512, 1024, 2048].iter() {
         let keypairs: Vec<Keypair> = (0..*num_validators).map(|_| Keypair::new()).collect();
-        let pubkeys: Vec<Pubkey> = keypairs.iter().map(|kp| (*kp.public).into()).collect();
+        let pubkeys: Vec<PopVerified<Pubkey>> = keypairs
+            .iter()
+            .map(|kp| unsafe { PopVerified::new_unchecked((*kp.public).into()) })
+            .collect();
 
         // Create a unique message for each validator
         let messages: Vec<Vec<u8>> = (0..*num_validators)
