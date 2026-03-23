@@ -4188,7 +4188,7 @@ dependencies = [
 
 [[package]]
 name = "solana-program-error"
-version = "3.0.0"
+version = "3.0.1"
 dependencies = [
  "borsh",
  "num_enum",
