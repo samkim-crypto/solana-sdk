@@ -566,8 +566,8 @@ mod tests {
 
         // Test empty case
         let empty: std::vec::Vec<SignatureProjective> = Vec::new();
-        let empty_agg = SignatureProjective::par_aggregate(empty.par_iter()).unwrap();
-        assert_eq!(empty_agg, SignatureProjective::identity());
+        let empty_agg_err = SignatureProjective::par_aggregate(empty.par_iter()).unwrap_err();
+        assert_eq!(empty_agg_err, BlsError::EmptyAggregation);
     }
 
     #[test]

@@ -79,11 +79,14 @@ impl PubkeyProjective {
         &mut self,
         pubkeys: impl ParallelIterator<Item = &'a PopVerified<P>>,
     ) -> Result<(), BlsError> {
-        let aggregate = PubkeyProjective::par_aggregate(pubkeys)?;
-        // `aggregate` is an `AggregatePubkey<PubkeyProjective>`, so we unwrap it twice
-        // to get `G1Projective`
-        self.0 += &aggregate.0 .0;
-        Ok(())
+        match PubkeyProjective::par_aggregate(pubkeys) {
+            Ok(aggregate) => {
+                self.0 += &aggregate.0 .0;
+                Ok(())
+            }
+            Err(BlsError::EmptyAggregation) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     /// Aggregate a list of Proof-of-Possession verified public keys (Parallel)
@@ -92,23 +95,29 @@ impl PubkeyProjective {
     pub fn par_aggregate<'a, P: AddToPubkeyProjective + Sync + 'a>(
         pubkeys: impl ParallelIterator<Item = &'a PopVerified<P>>,
     ) -> Result<AggregatePubkey<PubkeyProjective>, BlsError> {
-        let aggregate = pubkeys
+        let (aggregate, has_items) = pubkeys
             .into_par_iter()
             .fold(
-                || Ok::<PubkeyProjective, BlsError>(PubkeyProjective::identity()),
+                || Ok::<_, BlsError>((PubkeyProjective::identity(), false)),
                 |acc, pubkey| {
-                    let mut acc = acc?;
-                    pubkey.0.add_to_accumulator(&mut acc)?;
-                    Ok(acc)
+                    let (mut proj, _) = acc?;
+                    pubkey.0.add_to_accumulator(&mut proj)?;
+                    Ok((proj, true))
                 },
             )
-            .reduce_with(|a, b| {
-                let mut a_val = a?;
-                let b_val = b?;
-                a_val.0 += b_val.0;
-                Ok(a_val)
-            })
-            .ok_or(BlsError::EmptyAggregation)??;
+            .reduce(
+                || Ok::<_, BlsError>((PubkeyProjective::identity(), false)),
+                |a, b| {
+                    let (mut a_proj, a_has) = a?;
+                    let (b_proj, b_has) = b?;
+                    a_proj.0 += b_proj.0;
+                    Ok((a_proj, a_has || b_has))
+                },
+            )?;
+
+        if !has_items {
+            return Err(BlsError::EmptyAggregation);
+        }
 
         Ok(AggregatePubkey(aggregate))
     }

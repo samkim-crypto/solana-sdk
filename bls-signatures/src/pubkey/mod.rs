@@ -314,10 +314,8 @@ mod tests {
 
         // Test empty case
         let empty: std::vec::Vec<PopVerified<PubkeyProjective>> = std::vec![];
-        let empty_agg = PubkeyProjective::par_aggregate(empty.par_iter()).unwrap();
-
-        // Dereference `empty_agg` to compare against identity
-        assert_eq!(*empty_agg, PubkeyProjective::identity());
+        let empty_agg_err = PubkeyProjective::par_aggregate(empty.par_iter()).unwrap_err();
+        assert_eq!(empty_agg_err, BlsError::EmptyAggregation);
     }
 
     #[test]

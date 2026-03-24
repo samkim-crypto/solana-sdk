@@ -76,9 +76,14 @@ impl SignatureProjective {
         &mut self,
         signatures: impl ParallelIterator<Item = &'a S>,
     ) -> Result<(), BlsError> {
-        let aggregate = SignatureProjective::par_aggregate(signatures)?;
-        self.0 += &aggregate.0;
-        Ok(())
+        match SignatureProjective::par_aggregate(signatures) {
+            Ok(aggregate) => {
+                self.0 += &aggregate.0;
+                Ok(())
+            }
+            Err(BlsError::EmptyAggregation) => Ok(()),
+            Err(e) => Err(e),
+        }
     }
 
     /// Aggregate a list of signatures
@@ -87,22 +92,30 @@ impl SignatureProjective {
     pub fn par_aggregate<'a, S: AddToSignatureProjective + Sync + 'a>(
         signatures: impl ParallelIterator<Item = &'a S>,
     ) -> Result<SignatureProjective, BlsError> {
-        signatures
+        let (aggregate, has_items) = signatures
             .into_par_iter()
             .fold(
-                || Ok(SignatureProjective::identity()),
+                || Ok::<_, BlsError>((SignatureProjective::identity(), false)),
                 |acc, signature| {
-                    let mut acc = acc?;
-                    signature.add_to_accumulator(&mut acc)?;
-                    Ok(acc)
+                    let (mut proj, _) = acc?;
+                    signature.add_to_accumulator(&mut proj)?;
+                    Ok((proj, true))
                 },
             )
-            .reduce_with(|a, b| {
-                let mut a_val = a?;
-                let b_val = b?;
-                a_val.0 += b_val.0;
-                Ok(a_val)
-            })
-            .ok_or(BlsError::EmptyAggregation)?
+            .reduce(
+                || Ok::<_, BlsError>((SignatureProjective::identity(), false)),
+                |a, b| {
+                    let (mut a_proj, a_has) = a?;
+                    let (b_proj, b_has) = b?;
+                    a_proj.0 += b_proj.0;
+                    Ok((a_proj, a_has || b_has))
+                },
+            )?;
+
+        if !has_items {
+            return Err(BlsError::EmptyAggregation);
+        }
+
+        Ok(aggregate)
     }
 }
