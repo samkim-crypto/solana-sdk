@@ -16,13 +16,13 @@ use {
 pub const BLS_PUBLIC_KEY_COMPRESSED_SIZE: usize = 48;
 
 /// Size of a BLS public key in a compressed point representation in base64
-pub const BLS_PUBLIC_KEY_COMPRESSED_BASE64_SIZE: usize = 128;
+pub const BLS_PUBLIC_KEY_COMPRESSED_BASE64_SIZE: usize = 64;
 
 /// Size of a BLS public key in an affine point representation
 pub const BLS_PUBLIC_KEY_AFFINE_SIZE: usize = 96;
 
 /// Size of a BLS public key in an affine point representation in base64
-pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 256;
+pub const BLS_PUBLIC_KEY_AFFINE_BASE64_SIZE: usize = 128;
 
 /// A serialized BLS public key in a compressed point representation.
 #[cfg_attr(feature = "frozen-abi", derive(solana_frozen_abi_macro::AbiExample))]
