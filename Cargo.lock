@@ -4270,6 +4270,7 @@ dependencies = [
  "serde_derive",
  "solana-frozen-abi",
  "solana-frozen-abi-macro",
+ "wincode",
 ]
 
 [[package]]
