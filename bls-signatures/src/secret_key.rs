@@ -11,10 +11,14 @@ use {
     core::ptr,
     ff::Field,
     rand::rngs::OsRng,
-    zeroize::{Zeroize, ZeroizeOnDrop},
+    zeroize::{Zeroize, ZeroizeOnDrop, Zeroizing},
 };
 #[cfg(feature = "solana-signer-derive")]
-use {solana_signature::Signature, solana_signer::Signer, subtle::ConstantTimeEq};
+use {
+    solana_signature::{Signature, SIGNATURE_BYTES},
+    solana_signer::Signer,
+    subtle::ConstantTimeEq,
+};
 
 /// Size of BLS secret key in bytes
 pub const BLS_SECRET_KEY_SIZE: usize = 32;
@@ -46,6 +50,16 @@ impl Drop for SecretKey {
 impl ZeroizeOnDrop for SecretKey {}
 
 impl SecretKey {
+    /// Parses a canonical, non-zero secret scalar from little-endian bytes.
+    fn parse_scalar(bytes: &[u8; BLS_SECRET_KEY_SIZE]) -> Result<Scalar, BlsError> {
+        let scalar: Option<Scalar> = Scalar::from_bytes_le(bytes).into();
+        let scalar = scalar.ok_or(BlsError::FieldDecode)?;
+        if bool::from(scalar.is_zero()) {
+            return Err(BlsError::FieldDecode);
+        }
+        Ok(scalar)
+    }
+
     /// Constructs a new, random `BlsSecretKey` using `OsRng`
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
@@ -58,37 +72,36 @@ impl SecretKey {
         if ikm.len() < 32 {
             return Err(BlsError::KeyDerivation);
         }
-        let mut scalar = blst_scalar::default();
+        let mut scalar = Zeroizing::new(blst_scalar::default());
         unsafe {
             blst_keygen(
-                &mut scalar as *mut blst_scalar,
+                &mut *scalar as *mut blst_scalar,
                 ikm.as_ptr(),
                 ikm.len(),
                 ptr::null(),
                 0,
             );
         }
-        scalar
-            .try_into()
-            .map(Self)
-            .map_err(|_| BlsError::FieldDecode)
+        Self::parse_scalar(&scalar.b).map(Self)
     }
 
     /// Derive a `BlsSecretKey` from a Solana signer
     #[cfg(feature = "solana-signer-derive")]
     pub fn derive_from_signer(signer: &dyn Signer, public_seed: &[u8]) -> Result<Self, BlsError> {
         let message = [b"bls-key-derive-", public_seed].concat();
-        let signature = signer
-            .try_sign_message(&message)
-            .map_err(|_| BlsError::KeyDerivation)?;
+        let signature = Zeroizing::new(<[u8; SIGNATURE_BYTES]>::from(
+            signer
+                .try_sign_message(&message)
+                .map_err(|_| BlsError::KeyDerivation)?,
+        ));
 
         // Some `Signer` implementations return the default signature, which is not suitable for
         // use as key material
-        if bool::from(signature.as_ref().ct_eq(Signature::default().as_ref())) {
+        if bool::from(signature.as_slice().ct_eq(Signature::default().as_ref())) {
             return Err(BlsError::KeyDerivation);
         }
 
-        Self::derive(signature.as_ref())
+        Self::derive(signature.as_slice())
     }
 
     /// Generate a proof of possession for the corresponding pubkey
@@ -119,17 +132,14 @@ impl TryFrom<&[u8]> for SecretKey {
             return Err(BlsError::ParseFromBytes);
         }
         // unwrap safe due to the length check above
-        let scalar: Option<Scalar> = Scalar::from_bytes_le(bytes.try_into().unwrap()).into();
-        let scalar = scalar.ok_or(BlsError::FieldDecode)?;
-        if bool::from(scalar.is_zero()) {
-            return Err(BlsError::FieldDecode);
-        }
-        Ok(Self(scalar))
+        Self::parse_scalar(bytes.try_into().unwrap()).map(Self)
     }
 }
 
 impl From<&SecretKey> for [u8; BLS_SECRET_KEY_SIZE] {
     fn from(secret_key: &SecretKey) -> Self {
+        // WARNING: The returned buffer contains raw secret-key bytes. Callers should zeroize it
+        // as soon as they are done using it.
         secret_key.0.to_bytes_le()
     }
 }
