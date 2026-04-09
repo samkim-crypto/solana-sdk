@@ -165,7 +165,7 @@ impl Keypair {
         }
 
         // Remove the file or symlink if it already exists.
-        fs::remove_file(outfile);
+        let _ = fs::remove_file(outfile);
 
         let mut f = {
             #[cfg(not(unix))]
@@ -178,6 +178,7 @@ impl Keypair {
                 OpenOptions::new().mode(0o600)
             }
         }
+        .write(true)
         .create_new(true)
         .open(outfile)?;
 
