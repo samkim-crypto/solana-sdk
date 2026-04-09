@@ -164,6 +164,9 @@ impl Keypair {
             fs::create_dir_all(outdir)?;
         }
 
+        // Remove the file or symlink if it already exists.
+        fs::remove_file(outfile);
+
         let mut f = {
             #[cfg(not(unix))]
             {
@@ -175,9 +178,7 @@ impl Keypair {
                 OpenOptions::new().mode(0o600)
             }
         }
-        .write(true)
-        .truncate(true)
-        .create(true)
+        .create_new(true)
         .open(outfile)?;
 
         self.write_json(&mut f)
