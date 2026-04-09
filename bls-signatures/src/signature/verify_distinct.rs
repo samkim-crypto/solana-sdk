@@ -288,6 +288,9 @@ impl SignatureProjective {
             .iter()
             .zip(grouped_prepared_hashes.iter())
         {
+            if bool::from(pubkey.is_identity()) {
+                return Err(BlsError::VerificationFailed);
+            }
             terms.push((pubkey, prepared_hash));
         }
         terms.push((neg_g1_generator, &signature_prepared));
@@ -359,6 +362,9 @@ impl SignatureProjective {
             .iter()
             .zip(grouped_prepared_hashes.iter())
         {
+            if bool::from(pubkey.is_identity()) {
+                return Err(BlsError::VerificationFailed);
+            }
             terms.push((pubkey, *prepared_hash));
         }
         terms.push((neg_g1_generator, &signature_prepared));
@@ -563,6 +569,9 @@ impl SignatureProjective {
             .iter()
             .zip(grouped_prepared_hashes.iter())
         {
+            if bool::from(pubkey.is_identity()) {
+                return Err(BlsError::VerificationFailed);
+            }
             terms.push((pubkey, prepared_hash));
         }
         terms.push((neg_g1_generator, &signature_prepared));
