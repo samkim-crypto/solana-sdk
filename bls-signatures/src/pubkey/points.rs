@@ -36,7 +36,7 @@ impl PubkeyProjective {
     /// Construct a corresponding `BlsPubkey` for a `BlsSecretKey`
     #[allow(clippy::arithmetic_side_effects)]
     pub fn from_secret(secret: &SecretKey) -> Self {
-        Self(G1Projective::generator() * secret.0)
+        Self(G1Projective::generator() * &secret.0)
     }
 }
 

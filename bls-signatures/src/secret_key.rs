@@ -114,14 +114,14 @@ impl SecretKey {
             let pubkey_bytes = pubkey.to_bytes_compressed();
             hash_pop_to_projective(&pubkey_bytes)
         };
-        ProofOfPossessionProjective(hashed_point * self.0)
+        ProofOfPossessionProjective(hashed_point * &self.0)
     }
 
     /// Sign a message using the provided secret key
     #[allow(clippy::arithmetic_side_effects)]
     pub fn sign(&self, message: &[u8]) -> SignatureProjective {
         let hashed_message = hash_message_to_projective(message);
-        SignatureProjective(hashed_message * self.0)
+        SignatureProjective(hashed_message * &self.0)
     }
 }
 
