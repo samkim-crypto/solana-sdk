@@ -106,6 +106,7 @@ impl SecretKey {
 
     /// Generate a proof of possession for the corresponding pubkey
     #[allow(clippy::arithmetic_side_effects)]
+    #[allow(clippy::op_ref)]
     pub fn proof_of_possession(&self, payload: Option<&[u8]>) -> ProofOfPossessionProjective {
         let hashed_point = if let Some(bytes) = payload {
             hash_pop_to_projective(bytes)
@@ -119,6 +120,7 @@ impl SecretKey {
 
     /// Sign a message using the provided secret key
     #[allow(clippy::arithmetic_side_effects)]
+    #[allow(clippy::op_ref)]
     pub fn sign(&self, message: &[u8]) -> SignatureProjective {
         let hashed_message = hash_message_to_projective(message);
         SignatureProjective(hashed_message * &self.0)
