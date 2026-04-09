@@ -1,3 +1,20 @@
+//! Batch verification for distinct messages.
+//!
+//! # Security Note: Individual Signature Validity
+//!
+//! The functions in this module verify that an **aggregated** signature is valid for a given set
+//! of public keys and their corresponding messages. However, they **do not guarantee that each
+//! individual signature was valid prior to aggregation**.
+//!
+//! Because the verification evaluates the sum of the pairings without using random linear
+//! combinations, it is mathematically possible for individually invalid signatures to cancel
+//! each other out, resulting in a valid aggregate.
+//!
+//! This property is acceptable and expected in the context of the Solana Alpenglow consensus
+//! protocol, where only the final aggregated signature is included on-chain. If your Rust
+//! application requires strict proof that every single participant provided a valid signature
+//! prior to aggregation, you must verify the signatures individually.
+
 #[cfg(feature = "std")]
 use crate::pubkey::verify::NEG_G1_GENERATOR_AFFINE;
 use {
