@@ -2,7 +2,7 @@
 name = "solana-sha512-hasher"
 description = "Solana SHA512 hashing"
 documentation = "https://docs.rs/solana-sha512-hasher"
-version = "0.0.0"
+version = "1.0.0"
 authors = { workspace = true }
 repository = { workspace = true }
 homepage = { workspace = true }
