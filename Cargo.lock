@@ -4490,7 +4490,7 @@ dependencies = [
 
 [[package]]
 name = "solana-sha512-hasher"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "sha2",
  "solana-define-syscall",
