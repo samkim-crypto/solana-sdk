@@ -3942,7 +3942,7 @@ dependencies = [
 
 [[package]]
 name = "solana-loader-v3-interface"
-version = "8.0.0"
+version = "8.0.1"
 dependencies = [
  "bincode",
  "serde",
