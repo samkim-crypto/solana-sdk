@@ -118,7 +118,17 @@ impl From<&Keypair> for [u8; BLS_KEYPAIR_SIZE] {
         // WARNING: `bytes` contains raw secret-key material. Callers should zeroize the returned
         // buffer as soon as they are done using it.
         let mut bytes = [0u8; BLS_KEYPAIR_SIZE];
-        let secret_bytes = Zeroizing::new(Into::<[u8; BLS_SECRET_KEY_SIZE]>::into(&keypair.secret));
+        let secret_bytes: Zeroizing<[u8; BLS_SECRET_KEY_SIZE]> = (&keypair.secret).into();
+        bytes[..BLS_SECRET_KEY_SIZE].copy_from_slice(secret_bytes.as_slice());
+        bytes[BLS_SECRET_KEY_SIZE..].copy_from_slice(&keypair.public.to_bytes_uncompressed());
+        bytes
+    }
+}
+
+impl From<&Keypair> for Zeroizing<[u8; BLS_KEYPAIR_SIZE]> {
+    fn from(keypair: &Keypair) -> Self {
+        let mut bytes = Zeroizing::new([0u8; BLS_KEYPAIR_SIZE]);
+        let secret_bytes: Zeroizing<[u8; BLS_SECRET_KEY_SIZE]> = (&keypair.secret).into();
         bytes[..BLS_SECRET_KEY_SIZE].copy_from_slice(secret_bytes.as_slice());
         bytes[BLS_SECRET_KEY_SIZE..].copy_from_slice(&keypair.public.to_bytes_uncompressed());
         bytes
@@ -139,11 +149,12 @@ impl Keypair {
         Self::read_json(&mut file)
     }
 
-    /// WARNING: The returned JSON string contains secret-key material. Callers should clear it as
-    /// soon as they are done using it.
-    pub fn write_json<W: Write>(&self, writer: &mut W) -> Result<String, Box<dyn error::Error>> {
-        let bytes = Zeroizing::new(Into::<[u8; BLS_KEYPAIR_SIZE]>::into(self));
-        let json = serde_json::to_string(bytes.as_slice())?;
+    pub fn write_json<W: Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<Zeroizing<String>, Box<dyn error::Error>> {
+        let bytes: Zeroizing<[u8; BLS_KEYPAIR_SIZE]> = self.into();
+        let json = Zeroizing::new(serde_json::to_string(bytes.as_slice())?);
         writer.write_all(json.as_bytes())?;
         Ok(json)
     }
@@ -151,7 +162,7 @@ impl Keypair {
     pub fn write_json_file<F: AsRef<Path>>(
         &self,
         outfile: F,
-    ) -> Result<String, Box<dyn core::error::Error>> {
+    ) -> Result<Zeroizing<String>, Box<dyn core::error::Error>> {
         let outfile = outfile.as_ref();
 
         if let Some(outdir) = outfile.parent() {
