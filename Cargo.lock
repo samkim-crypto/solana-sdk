@@ -3962,7 +3962,7 @@ dependencies = [
 
 [[package]]
 name = "solana-message"
-version = "4.1.0"
+version = "4.1.1"
 dependencies = [
  "anyhow",
  "bincode",
