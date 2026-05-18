@@ -292,7 +292,7 @@ solana-program = { path = "program", version = "4.0.0", default-features = false
 solana-program-entrypoint = { path = "program-entrypoint", version = "3.0.0" }
 solana-program-error = { path = "program-error", version = "3.0.0" }
 solana-program-log = { path = "program-log", version = "1.0.0" }
-solana-program-log-macro = { path = "program-log-macro", version = "1.0.0" }
+solana-program-log-macro = { path = "program-log-macro", version = "1.1.0" }
 solana-program-memory = { path = "program-memory", version = "3.0.0" }
 solana-program-option = { path = "program-option", version = "3.0.0" }
 solana-program-pack = { path = "program-pack", version = "3.0.0" }
