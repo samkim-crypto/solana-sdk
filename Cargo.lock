@@ -3560,7 +3560,7 @@ dependencies = [
 
 [[package]]
 name = "solana-curve25519"
-version = "4.0.0"
+version = "4.0.1"
 dependencies = [
  "bytemuck",
  "bytemuck_derive",
