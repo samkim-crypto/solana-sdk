@@ -1,11 +1,8 @@
 use {
+    crate::stable_abi::StableAbi,
     core::{array, num::NonZero},
     rand::{Rng, RngCore},
 };
-
-pub trait StableAbi: Sized {
-    fn random(rng: &mut (impl RngCore + ?Sized)) -> Self;
-}
 
 macro_rules! impl_stable_abi_via_standard_uniform {
     ($($t:ty),* $(,)?) => {
