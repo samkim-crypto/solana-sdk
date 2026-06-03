@@ -1,5 +1,6 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![cfg_attr(feature = "frozen-abi", feature(min_specialization))]
+#![no_std]
 //! Sequences of [`Instruction`]s executed within a single transaction.
 //!
 //! [`Instruction`]: https://docs.rs/solana-instruction/latest/solana_instruction/struct.Instruction.html
@@ -39,39 +40,47 @@
 //! types continue to be exposed to Solana programs, for backwards compatibility
 //! reasons.
 
+extern crate alloc;
+#[cfg(any(feature = "frozen-abi", feature = "std"))]
+extern crate std;
+
+#[cfg(feature = "serde")]
+use serde_derive::{Deserialize, Serialize};
+#[cfg(feature = "frozen-abi")]
+use solana_frozen_abi_macro::AbiExample;
+#[cfg(feature = "std")]
+use std::collections::HashSet;
+#[cfg(feature = "wincode")]
+use wincode::{SchemaRead, SchemaWrite, UninitBuilder};
+use {
+    crate::compiled_instruction::CompiledInstruction, alloc::vec::Vec,
+    solana_sdk_ids::bpf_loader_upgradeable,
+};
+
+mod account_keys;
+
+#[cfg(feature = "std")]
+mod address_loader;
 pub mod compiled_instruction;
 mod compiled_keys;
 pub mod inline_nonce;
 pub mod inner_instruction;
 pub mod legacy;
-#[cfg(feature = "serde")]
-use serde_derive::{Deserialize, Serialize};
-#[cfg(feature = "frozen-abi")]
-use solana_frozen_abi_macro::AbiExample;
-#[cfg(feature = "wincode")]
-use wincode::{SchemaRead, SchemaWrite, UninitBuilder};
-use {solana_sdk_ids::bpf_loader_upgradeable, std::collections::HashSet};
-
-#[cfg(not(target_os = "solana"))]
-#[path = ""]
-mod non_bpf_modules {
-    mod account_keys;
-    mod address_loader;
-    mod sanitized;
-    mod versions;
-
-    pub use {account_keys::*, address_loader::*, sanitized::*, versions::*};
-}
-
-use crate::compiled_instruction::CompiledInstruction;
-#[cfg(not(target_os = "solana"))]
-pub use non_bpf_modules::*;
+#[cfg(feature = "std")]
+mod sanitized;
+mod versions;
+#[cfg(feature = "std")]
+pub use address_loader::*;
+#[cfg(feature = "std")]
+pub use sanitized::*;
 pub use {
+    account_keys::*,
     compiled_keys::CompileError,
     legacy::Message,
     solana_address::Address,
     solana_hash::Hash,
     solana_instruction::{AccountMeta, Instruction},
+    versions::*,
 };
 
 /// The length of a message header in bytes.
@@ -148,6 +157,7 @@ pub struct AddressLookupTableAccount {
 ///
 /// This method should not be used directly. It is used by Legacy and V1
 /// message types.
+#[cfg(feature = "std")]
 #[inline(always)]
 fn is_writable_index(i: usize, header: MessageHeader, account_keys: &[Address]) -> bool {
     i < (header.num_required_signatures as usize)
@@ -160,6 +170,7 @@ fn is_writable_index(i: usize, header: MessageHeader, account_keys: &[Address]) 
 
 /// Returns true if the account at the specified index is in the optional
 /// reserved account keys set.
+#[cfg(feature = "std")]
 #[inline(always)]
 fn is_account_maybe_reserved(
     i: usize,
@@ -209,6 +220,7 @@ fn is_upgradeable_loader_present(account_keys: &[Address]) -> bool {
 /// fetching the latest set of reserved account keys. If this method is
 /// called by the runtime, the latest set of reserved account keys must be
 /// passed.
+#[cfg(feature = "std")]
 #[inline(always)]
 fn is_maybe_writable(
     i: usize,
@@ -226,6 +238,7 @@ fn is_maybe_writable(
 mod tests {
     use {
         crate::{is_account_maybe_reserved, Message},
+        alloc::vec,
         solana_address::Address,
         std::collections::HashSet,
     };
