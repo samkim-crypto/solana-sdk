@@ -4782,7 +4782,7 @@ dependencies = [
 
 [[package]]
 name = "solana-transaction-error"
-version = "3.2.0"
+version = "3.2.1"
 dependencies = [
  "serde",
  "serde_derive",
