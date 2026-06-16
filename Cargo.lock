@@ -4273,7 +4273,7 @@ dependencies = [
 
 [[package]]
 name = "solana-rent"
-version = "4.2.0"
+version = "4.2.1"
 dependencies = [
  "proptest",
  "serde",
