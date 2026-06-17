@@ -4,7 +4,7 @@
 //! bank fork for the slot on the fork that executes the current transaction.
 //! In case there was no fork it returns _0_.
 //!
-//! [`LastRestartSlot`] implements [`Sysvar::get`] and can be loaded efficiently without
+//! [`LastRestartSlot`] implements [`crate::Sysvar::get`] and can be loaded efficiently without
 //! passing the sysvar account ID to the program.
 //!
 //! See also the Solana [SIMD proposal][simd].
@@ -38,22 +38,17 @@
 //!
 #[cfg(feature = "bincode")]
 use crate::SysvarSerialize;
-use crate::{impl_sysvar_get, Sysvar};
 pub use {
     solana_last_restart_slot::LastRestartSlot,
     solana_sdk_ids::sysvar::last_restart_slot::{check_id, id, ID},
 };
-
-impl Sysvar for LastRestartSlot {
-    impl_sysvar_get!(id());
-}
 
 #[cfg(feature = "bincode")]
 impl SysvarSerialize for LastRestartSlot {}
 
 #[cfg(test)]
 mod tests {
-    use {super::*, crate::tests::to_bytes, serial_test::serial};
+    use super::*;
 
     #[test]
     #[cfg(feature = "bincode")]
@@ -67,18 +62,5 @@ mod tests {
             in_memory_size, bincode_size,
             "LastRestartSlot in-memory size ({in_memory_size}) must match bincode size ({bincode_size})",
         );
-    }
-
-    #[test]
-    #[serial]
-    fn test_last_restart_slot_get_uses_sysvar_syscall() {
-        let expected = LastRestartSlot {
-            last_restart_slot: 9999,
-        };
-        let data = to_bytes(&expected);
-        crate::tests::mock_get_sysvar_syscall(&data);
-
-        let got = LastRestartSlot::get().unwrap();
-        assert_eq!(got, expected);
     }
 }
