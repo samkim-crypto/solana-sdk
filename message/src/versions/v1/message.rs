@@ -467,12 +467,9 @@ impl Message {
             return Err(MessageError::DuplicateAddresses);
         }
 
-        // validate config mask (2-bit fields must have both bits set or neither)
-        let mask: TransactionConfigMask = self.config.into();
-
-        if mask.has_invalid_priority_fee_bits() {
-            return Err(MessageError::InvalidConfigMask);
-        }
+        // The config mask is regenerated from the typed `TransactionConfig` on
+        // serialization, so a malformed mask cannot exist here. Invalid/unknown mask
+        // bits only occur in raw wire bytes and are rejected during deserialization.
 
         // if specified, heap size must be a multiple of 1024 and within valid bounds
         if let Some(heap_size) = self.config.heap_size {
@@ -626,6 +623,16 @@ unsafe impl<'de, C: Config> SchemaRead<'de, C> for Message {
                 num_addresses,
             )
         };
+
+        // Reject masks we cannot round-trip. Unknown bits would be silently dropped
+        // on re-serialization (this message is signed, so that invalidates the
+        // signature), and a partial priority-fee bit pair is malformed. Support for
+        // new bits is added by a newer library release that promotes them to known.
+        if config_mask.has_unknown_bits() || config_mask.has_invalid_priority_fee_bits() {
+            return Err(wincode::error::invalid_value(
+                "invalid transaction config mask",
+            ));
+        }
 
         <C::LengthEncoding as SeqLen<C>>::prealloc_check::<Address>(num_addresses)?;
         let account_keys = <Vec<Address> as SchemaReadContext<C, context::Len>>::get_with_context(
@@ -1347,5 +1354,52 @@ mod tests {
         let serialized = wincode::serialize(&message).unwrap();
         let deserialized = deserialize(&serialized).unwrap();
         assert_eq!(message.config, deserialized.config);
+    }
+
+    #[test]
+    fn deserialize_rejects_unknown_config_mask_bits() {
+        let message = MessageBuilder::default()
+            .required_signatures(1)
+            .lifetime_specifier(Hash::new_unique())
+            .accounts(vec![Address::new_unique(), Address::new_unique()])
+            .instruction(CompiledInstruction {
+                program_id_index: 1,
+                accounts: vec![0],
+                data: vec![],
+            })
+            .build()
+            .unwrap();
+
+        let mut serialized = wincode::serialize(&message).unwrap();
+        // Round-trips cleanly with a zero (all-known) mask.
+        assert!(deserialize(&serialized).is_ok());
+
+        // The config mask is a u32 (little-endian) immediately after the 3-byte
+        // header. Set the first bit past KNOWN_BITS; it must be rejected rather than
+        // silently dropped, regardless of how many bits KNOWN_BITS covers.
+        let unknown_bit = 1u32 << TransactionConfigMask::KNOWN_BITS.trailing_ones();
+        let mask = u32::from_le_bytes(serialized[3..7].try_into().unwrap()) | unknown_bit;
+        serialized[3..7].copy_from_slice(&mask.to_le_bytes());
+        assert!(deserialize(&serialized).is_err());
+    }
+
+    #[test]
+    fn deserialize_rejects_partial_priority_fee_bits() {
+        let message = MessageBuilder::default()
+            .required_signatures(1)
+            .lifetime_specifier(Hash::new_unique())
+            .accounts(vec![Address::new_unique(), Address::new_unique()])
+            .instruction(CompiledInstruction {
+                program_id_index: 1,
+                accounts: vec![0],
+                data: vec![],
+            })
+            .build()
+            .unwrap();
+
+        let mut serialized = wincode::serialize(&message).unwrap();
+        // Set only one of the two priority-fee bits (bit 0).
+        serialized[3] |= 0b1;
+        assert!(deserialize(&serialized).is_err());
     }
 }
