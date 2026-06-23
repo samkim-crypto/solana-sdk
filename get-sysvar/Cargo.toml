@@ -2,7 +2,7 @@
 name = "solana-get-sysvar"
 description = "Reads Solana sysvar account data from the runtime."
 documentation = "https://docs.rs/solana-get-sysvar"
-version = "0.0.0"
+version = "1.0.0"
 authors = { workspace = true }
 repository = { workspace = true }
 homepage = { workspace = true }

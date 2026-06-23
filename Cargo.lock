@@ -3792,7 +3792,7 @@ dependencies = [
 
 [[package]]
 name = "solana-get-sysvar"
-version = "0.0.0"
+version = "1.0.0"
 dependencies = [
  "solana-address",
  "solana-define-syscall",
