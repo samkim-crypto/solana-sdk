@@ -29,6 +29,8 @@
 
 #[cfg(feature = "borsh")]
 extern crate alloc;
+#[cfg(feature = "frozen-abi")]
+extern crate std;
 #[cfg(feature = "borsh")]
 use alloc::string::ToString;
 #[cfg(feature = "borsh")]
