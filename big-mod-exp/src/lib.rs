@@ -356,4 +356,31 @@ mod tests {
     fn big_mod_exp_multi_byte_zero_modulus_returns_none() {
         assert_eq!(big_mod_exp(&[0x00], &[], &[0x00, 0x00]), None);
     }
+
+    #[test]
+    fn big_mod_exp_explicit_zero_base_empty_exponent_test() {
+        assert_eq!(big_mod_exp(&[0x00], &[], &[0x03]), Some(vec![0x01]));
+    }
+
+    #[test]
+    fn big_mod_exp_multi_byte_even_modulus_returns_none() {
+        assert_eq!(big_mod_exp(&[0x00], &[], &[0x02, 0x01, 0x00]), None);
+    }
+
+    #[test]
+    fn big_mod_exp_base_equal_modulus_reduction_test() {
+        assert_eq!(
+            big_mod_exp(&[0x07, 0x00], &[0x01], &[0x07, 0x00]),
+            Some(vec![0x00, 0x00])
+        );
+    }
+
+    #[test]
+    fn big_mod_exp_highly_padded_modulus_test() {
+        // Modulus is 3, padded to 4 bytes. Output padded to 4 bytes.
+        assert_eq!(
+            big_mod_exp(&[0x02], &[0x02], &[0x03, 0x00, 0x00, 0x00]),
+            Some(vec![0x01, 0x00, 0x00, 0x00])
+        );
+    }
 }
