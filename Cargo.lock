@@ -4695,7 +4695,7 @@ dependencies = [
 
 [[package]]
 name = "solana-svm-transaction"
-version = "4.2.0"
+version = "4.3.0"
 dependencies = [
  "solana-hash",
  "solana-message",
