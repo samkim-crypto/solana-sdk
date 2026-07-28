@@ -4819,7 +4819,7 @@ version = "3.0.0"
 
 [[package]]
 name = "solana-transaction"
-version = "4.1.5"
+version = "4.2.0"
 dependencies = [
  "anyhow",
  "bincode",
