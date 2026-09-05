@@ -4200,7 +4200,7 @@ dependencies = [
 
 [[package]]
 name = "solana-reward-info"
-version = "6.3.0"
+version = "7.0.0"
 dependencies = [
  "serde",
  "serde_derive",
