@@ -89,7 +89,7 @@ fn check_budget(
     freed_bytes: usize,
 ) {
     let (max_allocs, max_bytes) = match label {
-        "control/empty" | "hash_message" => (0, 0),
+        "control/empty" | "control/rayon_join" | "hash_message" => (0, 0),
         "control/box64" => (1, 64),
         "prepare/from_hashed" | "prepare/from_raw" => (1, 19_584),
         name if name.starts_with("verify/prepared/") => (0, 0),
@@ -103,6 +103,12 @@ fn check_budget(
             (0, 0)
         }
         name if name.starts_with("aggregate/prepared/") => (0, 0),
+        name if name.starts_with("par_aggregate/raw/")
+            || name.starts_with("par_aggregate/pre_hashed/") =>
+        {
+            (1, 19_584)
+        }
+        name if name.starts_with("par_aggregate/prepared/") => (0, 0),
         _ => panic!("missing allocation budget for {label}"),
     };
 
@@ -167,6 +173,30 @@ fn measure(label: &str, mut operation: impl FnMut() -> bool) {
 }
 
 fn main() {
+    #[cfg(feature = "parallel")]
+    {
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(2)
+            .build()
+            .expect("build allocation regression pool");
+
+        // Visit every worker, then give the idle pool time to initialize
+        // Rayon's sleep machinery before allocation counting begins.
+        drop(pool.broadcast(|_| ()));
+        std::thread::sleep(std::time::Duration::from_millis(100));
+
+        // These measurements cover calls made inside the pool.
+        // Allocations on all threads still contribute while counting is enabled.
+        println!("measurement context: worker in a private two-worker Rayon pool");
+        println!("pool warm-up: broadcast completed, followed by a 100 ms caller sleep");
+        pool.install(run_allocation_regression);
+    }
+
+    #[cfg(not(feature = "parallel"))]
+    run_allocation_regression();
+}
+
+fn run_allocation_regression() {
     // All fixture creation happens while counting is disabled.
     let keypair = Keypair::derive(&[42u8; 32]).expect("derive fixture key");
     let message: &[u8] = b"solana-bls-signatures allocation baseline";
@@ -193,6 +223,8 @@ fn main() {
     println!("raw_compressed also decodes the compressed signature each time.");
     println!("Counts include destruction of temporaries within each operation.");
     println!("aggregate rows include aggregation of two affine keys and signatures.");
+    #[cfg(feature = "parallel")]
+    println!("par_aggregate rows call the parallel helpers with the same two inputs.");
 
     for pass in 1..=3 {
         println!("\npass {pass}");
@@ -205,6 +237,11 @@ fn main() {
         measure("control/box64", || {
             drop(black_box(Box::new(black_box([0u8; 64]))));
             true
+        });
+        #[cfg(feature = "parallel")]
+        measure("control/rayon_join", || {
+            let (a, b) = rayon::join(|| black_box(1u8), || black_box(2u8));
+            a == 1 && b == 2
         });
         measure("hash_message", || {
             black_box(HashedMessage::new(black_box(message)));
@@ -278,6 +315,31 @@ fn main() {
                     black_box(&prepared),
                 ) == expected
             });
+
+            #[cfg(feature = "parallel")]
+            {
+                measure(&format!("par_aggregate/raw/{status}"), || {
+                    SignatureProjective::par_verify_aggregate(
+                        black_box(&aggregate_pubkeys),
+                        black_box(signatures),
+                        black_box(message),
+                    ) == expected
+                });
+                measure(&format!("par_aggregate/pre_hashed/{status}"), || {
+                    SignatureProjective::par_verify_aggregate_pre_hashed(
+                        black_box(&aggregate_pubkeys),
+                        black_box(signatures),
+                        black_box(&hashed),
+                    ) == expected
+                });
+                measure(&format!("par_aggregate/prepared/{status}"), || {
+                    SignatureProjective::par_verify_aggregate_prepared(
+                        black_box(&aggregate_pubkeys),
+                        black_box(signatures),
+                        black_box(&prepared),
+                    ) == expected
+                });
+            }
         }
     }
 
