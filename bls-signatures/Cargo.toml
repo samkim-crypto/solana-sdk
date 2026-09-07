@@ -65,6 +65,11 @@ tempfile = { workspace = true }
 [lints]
 workspace = true
 
+[[test]]
+name = "allocation_regression"
+path = "tests/allocation_regression.rs"
+harness = false
+
 [[bench]]
 name = "bls_signatures"
 harness = false
