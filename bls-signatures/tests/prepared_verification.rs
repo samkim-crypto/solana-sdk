@@ -36,13 +36,12 @@ fn reused_and_cloned_preparations_match_direct_verification() {
 
             for (verifier_index, verifier) in keypairs.iter().enumerate() {
                 for (checked_index, hashed) in hashes.iter().enumerate() {
-                    let expected = if signer_index == verifier_index
-                        && signed_index == checked_index
-                    {
-                        Ok(())
-                    } else {
-                        Err(BlsError::VerificationFailed)
-                    };
+                    let expected =
+                        if signer_index == verifier_index && signed_index == checked_index {
+                            Ok(())
+                        } else {
+                            Err(BlsError::VerificationFailed)
+                        };
 
                     assert_eq!(
                         verifier
@@ -52,18 +51,16 @@ fn reused_and_cloned_preparations_match_direct_verification() {
                         "direct verification",
                     );
                     assert_eq!(
-                        verifier.public.verify_signature_prepared(
-                            &encoded,
-                            &preparations[checked_index],
-                        ),
+                        verifier
+                            .public
+                            .verify_signature_prepared(&encoded, &preparations[checked_index],),
                         expected,
                         "prepared verification with compressed signature",
                     );
                     assert_eq!(
-                        verifier.public.verify_signature_prepared(
-                            &affine,
-                            &preparations[checked_index],
-                        ),
+                        verifier
+                            .public
+                            .verify_signature_prepared(&affine, &preparations[checked_index],),
                         expected,
                         "prepared verification with affine signature",
                     );
@@ -80,8 +77,7 @@ fn prepared_verification_preserves_signature_errors() {
     let prepared = PreparedHashedMessage::from_hashed_message(&hashed);
 
     let identity: SignatureCompressed = SignatureProjective::identity().into();
-    SignatureAffine::try_from(&identity)
-        .expect("identity signatures must remain decodable");
+    SignatureAffine::try_from(&identity).expect("identity signatures must remain decodable");
 
     let malformed = SignatureCompressed([0u8; 96]);
     let malformed_error = SignatureAffine::try_from(&malformed)
@@ -117,11 +113,7 @@ fn prepared_screening_preserves_duplicate_message_grouping() {
         Keypair::derive(&[46u8; 32]).unwrap(),
         Keypair::derive(&[47u8; 32]).unwrap(),
     ];
-    let public_keys = [
-        keypairs[0].public,
-        keypairs[1].public,
-        keypairs[2].public,
-    ];
+    let public_keys = [keypairs[0].public, keypairs[1].public, keypairs[2].public];
 
     // Equal messages deliberately occupy nonadjacent positions.
     let messages: [&[u8]; 3] = [b"shared", b"unique", b"shared"];
@@ -130,8 +122,7 @@ fn prepared_screening_preserves_duplicate_message_grouping() {
         keypairs[1].sign(messages[1]),
         keypairs[2].sign(messages[2]),
     ];
-    let aggregate_signature =
-        SignatureProjective::aggregate(signatures.iter()).unwrap();
+    let aggregate_signature = SignatureProjective::aggregate(signatures.iter()).unwrap();
 
     let wrong_messages: [&[u8]; 3] = [b"shared", b"unique", b"wrong"];
     for (checked_messages, expected) in [

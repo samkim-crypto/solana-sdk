@@ -121,12 +121,20 @@ fn check_budget(
         freed_bytes, bytes,
         "unbalanced allocated/freed bytes in {label}"
     );
+
+    let allocation_limit = ITERATIONS
+        .checked_mul(max_allocs)
+        .expect("allocation budget overflow");
+    let byte_limit = ITERATIONS
+        .checked_mul(max_bytes)
+        .expect("byte budget overflow");
+
     assert!(
-        allocs <= max_allocs * ITERATIONS,
+        allocs <= allocation_limit,
         "{label}: {allocs} allocations exceed the limit of {max_allocs} per operation",
     );
     assert!(
-        bytes <= max_bytes * ITERATIONS,
+        bytes <= byte_limit,
         "{label}: {bytes} requested bytes exceed the limit of {max_bytes} per operation",
     );
 
@@ -150,7 +158,9 @@ fn measure(label: &str, mut operation: impl FnMut() -> bool) {
     let mut matching_results = 0usize;
     COUNTING.store(true, Ordering::SeqCst);
     for _ in 0..ITERATIONS {
-        matching_results += usize::from(black_box(operation()));
+        matching_results = matching_results
+            .checked_add(usize::from(black_box(operation())))
+            .expect("verification result counter overflow");
     }
     COUNTING.store(false, Ordering::SeqCst);
 

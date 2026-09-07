@@ -604,7 +604,8 @@ impl SignatureProjective {
         #[cfg(not(feature = "std"))]
         let neg_g1_generator = &neg_g1_generator_val;
 
-        let mut terms = alloc::vec::Vec::with_capacity(grouped_pubkeys_affine.len() + 1);
+        let mut terms =
+            alloc::vec::Vec::with_capacity(grouped_pubkeys_affine.len().saturating_add(1));
         for (pubkey, prepared_hash) in grouped_pubkeys_affine
             .iter()
             .zip(grouped_prepared_hashes.iter())
