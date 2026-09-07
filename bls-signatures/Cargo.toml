@@ -73,3 +73,7 @@ harness = false
 [[bench]]
 name = "bls_signatures"
 harness = false
+
+[[bench]]
+name = "verification_paths"
+harness = false
