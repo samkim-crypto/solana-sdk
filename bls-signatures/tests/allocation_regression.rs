@@ -11,7 +11,7 @@ use {
         hash::{HashedMessage, PreparedHashedMessage},
         keypair::Keypair,
         pubkey::VerifySignature,
-        signature::{SignatureAffine, SignatureCompressed},
+        signature::{SignatureAffine, SignatureCompressed, SignatureProjective},
     },
     std::{
         alloc::{GlobalAlloc, Layout, System},
@@ -78,7 +78,7 @@ unsafe impl GlobalAlloc for CountingAllocator {
 const ITERATIONS: usize = 100;
 const WARMUP: usize = 8;
 
-// These ceilings were measured with blstrs 0.7.1 and blst 0.3.17.
+// Allocation ceilings for blstrs 0.7.1 and blst 0.3.17.
 // Keep the control allocation exact so a disabled counter cannot pass.
 fn check_budget(
     label: &str,
@@ -99,6 +99,12 @@ fn check_budget(
         {
             (0, 0)
         }
+        name if name.starts_with("aggregate/raw/")
+            || name.starts_with("aggregate/pre_hashed/") =>
+        {
+            (1, 19_584)
+        }
+        name if name.starts_with("aggregate/prepared/") => (0, 0),
         _ => panic!("missing allocation budget for {label}"),
     };
 
@@ -171,11 +177,24 @@ fn main() {
     let hashed = HashedMessage::new(message);
     let prepared = PreparedHashedMessage::from_hashed_message(&hashed);
 
+    let other_keypair = Keypair::derive(&[43u8; 32]).expect("derive second aggregate key");
+    let aggregate_pubkeys = [keypair.public, other_keypair.public];
+    let other_signature: SignatureAffine = other_keypair.sign(message).into();
+    let aggregate_valid = [
+        SignatureAffine::try_from(&valid).expect("decode first aggregate signature"),
+        other_signature,
+    ];
+    let aggregate_wrong = [
+        SignatureAffine::try_from(&wrong).expect("decode wrong-message aggregate signature"),
+        other_signature,
+    ];
+
     println!("allocation regression v1; {ITERATIONS} operations per row; 3 passes");
     println!("parallel feature enabled: {}", cfg!(feature = "parallel"));
     println!("raw/pre_hashed/prepared use affine keys and affine signatures.");
     println!("raw_compressed also decodes the compressed signature each time.");
     println!("Counts include destruction of temporaries within each operation.");
+    println!("aggregate rows include aggregation of two affine keys and signatures.");
 
     for pass in 1..=3 {
         println!("\npass {pass}");
@@ -229,6 +248,37 @@ fn main() {
             measure(&format!("verify/raw_compressed/{status}"), || {
                 black_box(&keypair.public).verify_signature(black_box(encoded), black_box(message))
                     == expected
+            });
+        }
+
+        for (status, signatures, expected) in [
+            ("valid", &aggregate_valid, Ok(())),
+            (
+                "wrong_message",
+                &aggregate_wrong,
+                Err(BlsError::VerificationFailed),
+            ),
+        ] {
+            measure(&format!("aggregate/raw/{status}"), || {
+                SignatureProjective::verify_aggregate(
+                    black_box(&aggregate_pubkeys).iter(),
+                    black_box(signatures).iter(),
+                    black_box(message),
+                ) == expected
+            });
+            measure(&format!("aggregate/pre_hashed/{status}"), || {
+                SignatureProjective::verify_aggregate_pre_hashed(
+                    black_box(&aggregate_pubkeys).iter(),
+                    black_box(signatures).iter(),
+                    black_box(&hashed),
+                ) == expected
+            });
+            measure(&format!("aggregate/prepared/{status}"), || {
+                SignatureProjective::verify_aggregate_prepared(
+                    black_box(&aggregate_pubkeys).iter(),
+                    black_box(signatures).iter(),
+                    black_box(&prepared),
+                ) == expected
             });
         }
     }
