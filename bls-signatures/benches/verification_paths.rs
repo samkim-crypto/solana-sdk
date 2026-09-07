@@ -15,6 +15,9 @@ use {
 };
 
 fn verification_paths(c: &mut Criterion) {
+    #[cfg(feature = "parallel")]
+    parallel_aggregate_paths(c);
+
     // Use the same fixtures as the allocation regression test.
     let keypair = Keypair::derive(&[42u8; 32]).expect("derive fixture key");
     let message: &[u8] = b"solana-bls-signatures allocation baseline";
@@ -189,6 +192,124 @@ fn verification_paths(c: &mut Criterion) {
     aggregate.finish();
 }
 
+#[cfg(feature = "parallel")]
+fn time_on_worker(
+    pool: &rayon::ThreadPool,
+    iterations: u64,
+    mut operation: impl FnMut() -> Result<(), BlsError> + Send,
+) -> Duration {
+    pool.install(move || {
+        let start = std::time::Instant::now();
+        for _ in 0..iterations {
+            let _ = black_box(operation());
+        }
+        start.elapsed()
+    })
+}
+
+#[cfg(feature = "parallel")]
+fn parallel_aggregate_paths(c: &mut Criterion) {
+    let keypair = Keypair::derive(&[42u8; 32]).expect("derive fixture key");
+    let other_keypair = Keypair::derive(&[43u8; 32]).expect("derive second fixture key");
+    let message: &[u8] = b"solana-bls-signatures allocation baseline";
+    let hashed = HashedMessage::new(message);
+    let prepared = PreparedHashedMessage::from_hashed_message(&hashed);
+
+    let public_keys = [keypair.public, other_keypair.public];
+    let other_signature: SignatureAffine = other_keypair.sign(message).into();
+    let valid_signatures: [SignatureAffine; 2] = [keypair.sign(message).into(), other_signature];
+    let wrong_signatures: [SignatureAffine; 2] =
+        [keypair.sign(b"a different message").into(), other_signature];
+
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .expect("build parallel benchmark pool");
+
+    // Match the allocation test's pool warm-up, outside the timed region.
+    drop(pool.broadcast(|_| ()));
+    std::thread::sleep(Duration::from_millis(100));
+
+    println!("parallel aggregate timing: inside a private two-worker Rayon pool");
+    println!("timing includes aggregation and verification; preparations are reused");
+
+    let mut group = c.benchmark_group("bls_par_aggregate_worker");
+
+    for (status, signatures, expected) in [
+        ("valid", &valid_signatures, Ok(())),
+        (
+            "wrong_message",
+            &wrong_signatures,
+            Err(BlsError::VerificationFailed),
+        ),
+    ] {
+        // Validate each path in the same worker context before timing it.
+        pool.install(|| {
+            assert_eq!(
+                SignatureProjective::par_verify_aggregate(&public_keys, signatures, message,),
+                expected,
+                "parallel raw/{status}",
+            );
+            assert_eq!(
+                SignatureProjective::par_verify_aggregate_pre_hashed(
+                    &public_keys,
+                    signatures,
+                    &hashed,
+                ),
+                expected,
+                "parallel pre_hashed/{status}",
+            );
+            assert_eq!(
+                SignatureProjective::par_verify_aggregate_prepared(
+                    &public_keys,
+                    signatures,
+                    &prepared,
+                ),
+                expected,
+                "parallel prepared/{status}",
+            );
+        });
+
+        group.bench_function(format!("raw/{status}"), |b| {
+            b.iter_custom(|iterations| {
+                time_on_worker(&pool, iterations, || {
+                    SignatureProjective::par_verify_aggregate(
+                        black_box(&public_keys),
+                        black_box(signatures),
+                        black_box(message),
+                    )
+                })
+            });
+        });
+
+        group.bench_function(format!("pre_hashed/{status}"), |b| {
+            b.iter_custom(|iterations| {
+                time_on_worker(&pool, iterations, || {
+                    SignatureProjective::par_verify_aggregate_pre_hashed(
+                        black_box(&public_keys),
+                        black_box(signatures),
+                        black_box(&hashed),
+                    )
+                })
+            });
+        });
+
+        group.bench_function(format!("prepared/{status}"), |b| {
+            b.iter_custom(|iterations| {
+                time_on_worker(&pool, iterations, || {
+                    SignatureProjective::par_verify_aggregate_prepared(
+                        black_box(&public_keys),
+                        black_box(signatures),
+                        black_box(&prepared),
+                    )
+                })
+            });
+        });
+    }
+
+    group.finish();
+}
+
 criterion_group! {
     name = benches;
     config = Criterion::default()
@@ -198,4 +319,3 @@ criterion_group! {
     targets = verification_paths
 }
 criterion_main!(benches);
-
