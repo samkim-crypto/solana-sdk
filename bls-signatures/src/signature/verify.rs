@@ -47,8 +47,10 @@ impl SignatureProjective {
         signatures: impl Iterator<Item = &'a S>,
         hashed_message: &HashedMessage,
     ) -> Result<(), BlsError> {
-        let prepared_hashed_message = PreparedHashedMessage::from_hashed_message(hashed_message);
-        Self::verify_aggregate_prepared(public_keys, signatures, &prepared_hashed_message)
+        let aggregate_pubkey = PubkeyProjective::aggregate(public_keys)?;
+        let aggregate_signature = SignatureProjective::aggregate(signatures)?;
+
+        aggregate_pubkey.verify_signature_pre_hashed(&aggregate_signature, hashed_message)
     }
 
     /// Verify a list of signatures against a pre-hashed and prepared message and
