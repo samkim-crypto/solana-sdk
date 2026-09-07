@@ -4,6 +4,7 @@ use {
     crate::{
         error::BlsError,
         hash::{HashedMessage, HashedPoPPayload, PreparedHashedMessage},
+        prepared_g2::PreparedG2,
         proof_of_possession::{AsProofOfPossessionAffine, ProofOfPossessionAffine},
         pubkey::points::{AsPubkeyAffine, PopVerified, PubkeyAffine},
         signature::{AsSignatureAffine, SignatureAffine},
@@ -130,31 +131,22 @@ impl PubkeyAffine {
     pub(crate) fn _verify_signature_prepared(
         &self,
         signature: &SignatureAffine,
-        hashed_message_prepared: &G2Prepared,
+        hashed_message_prepared: &PreparedG2,
     ) -> bool {
         if bool::from(self.0.is_identity()) {
             return false;
         }
 
-        // The verification equation is e(pubkey, H(m)) = e(g1, signature).
-        // This can be rewritten as e(pubkey, H(m)) * e(-g1, signature) = 1, which
-        // allows for a more efficient verification using a multi-miller loop.
-        let signature_prepared = G2Prepared::from(signature.0);
+        // Reuse the message's prepared table.
+        let message_pairing = hashed_message_prepared.miller_loop(&self.0);
 
-        // use the static valud if `std` is available, otherwise compute it
-        #[cfg(feature = "std")]
-        let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
-        #[cfg(not(feature = "std"))]
-        #[allow(clippy::arithmetic_side_effects)]
-        let neg_g1_generator_val: G1Affine = (-G1Projective::generator()).into();
-        #[cfg(not(feature = "std"))]
-        let neg_g1_generator = &neg_g1_generator_val;
+        // Compute the signature term directly, without a preparation table.
+        let generator = G1Affine::generator();
+        let signature_pairing =
+            blst::blst_fp12::miller_loop(signature.0.as_ref(), generator.as_ref());
 
-        let miller_loop_result = Bls12::multi_miller_loop(&[
-            (&self.0, hashed_message_prepared),
-            (neg_g1_generator, &signature_prepared),
-        ]);
-        miller_loop_result.final_exponentiation() == Gt::identity()
+        // Check e(pubkey, H(m)) = e(g1, signature) with one final exponentiation.
+        blst::blst_fp12::finalverify(&message_pairing, &signature_pairing)
     }
 
     /// Verify a proof of possession against a public key

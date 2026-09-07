@@ -92,7 +92,7 @@ fn check_budget(
         "control/empty" | "hash_message" => (0, 0),
         "control/box64" => (1, 64),
         "prepare/from_hashed" | "prepare/from_raw" => (1, 19_584),
-        name if name.starts_with("verify/prepared/") => (1, 19_584),
+        name if name.starts_with("verify/prepared/") => (0, 0),
         name if name.starts_with("verify/raw/")
             || name.starts_with("verify/pre_hashed/")
             || name.starts_with("verify/raw_compressed/") =>
