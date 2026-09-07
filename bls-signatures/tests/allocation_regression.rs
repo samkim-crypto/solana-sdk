@@ -97,7 +97,7 @@ fn check_budget(
             || name.starts_with("verify/pre_hashed/")
             || name.starts_with("verify/raw_compressed/") =>
         {
-            (2, 39_168)
+            (0, 0)
         }
         _ => panic!("missing allocation budget for {label}"),
     };

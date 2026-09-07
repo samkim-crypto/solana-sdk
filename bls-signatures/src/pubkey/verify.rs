@@ -111,8 +111,20 @@ impl PubkeyAffine {
         signature: &SignatureAffine,
         hashed_message: &HashedMessage,
     ) -> bool {
-        let hashed_message_prepared = G2Prepared::from(hashed_message.0);
-        self._verify_signature_prepared(signature, &hashed_message_prepared)
+        if bool::from(self.0.is_identity()) {
+            return false;
+        }
+
+        // Check e(pubkey, H(m)) = e(g1, signature) without preparing
+        // either G2 point.
+        let generator = G1Affine::generator();
+        let message_pairing =
+            blst::blst_fp12::miller_loop(hashed_message.0.as_ref(), self.0.as_ref());
+        let signature_pairing =
+            blst::blst_fp12::miller_loop(signature.0.as_ref(), generator.as_ref());
+
+        // Compare the pairings using one final exponentiation.
+        blst::blst_fp12::finalverify(&message_pairing, &signature_pairing)
     }
 
     pub(crate) fn _verify_signature_prepared(
