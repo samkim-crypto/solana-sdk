@@ -106,7 +106,7 @@ fn check_budget(
         name if name.starts_with("par_aggregate/raw/")
             || name.starts_with("par_aggregate/pre_hashed/") =>
         {
-            (1, 19_584)
+            (0, 0)
         }
         name if name.starts_with("par_aggregate/prepared/") => (0, 0),
         _ => panic!("missing allocation budget for {label}"),
