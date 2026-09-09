@@ -476,6 +476,7 @@ macro_rules! impl_add_to_accumulator {
     };
 }
 
+#[cfg(not(target_os = "solana"))]
 macro_rules! impl_unchecked_conversions {
     (
         $unchecked_type:ident,     // e.g. SignatureAffineUnchecked
