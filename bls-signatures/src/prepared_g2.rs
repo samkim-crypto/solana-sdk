@@ -1,7 +1,7 @@
 //! G2 pairing preparation owned by this crate.
 
 use {
-    alloc::{vec, vec::Vec},
+    alloc::vec::Vec,
     blst::{blst_fp12, blst_fp6, blst_miller_loop_lines, blst_precompute_lines},
     blstrs::{G1Affine, G2Affine},
     group::prime::PrimeCurveAffine,
@@ -22,11 +22,15 @@ impl From<G2Affine> for PreparedG2 {
             return Self { lines: Vec::new() };
         }
 
-        let mut lines = vec![blst_fp6::default(); MILLER_LOOP_LINES];
-        // SAFETY: The output has space for all 68 coefficients. Both buffers
-        // remain valid for the call, and blst retains neither pointer.
+        let mut lines = Vec::<blst_fp6>::with_capacity(MILLER_LOOP_LINES);
+        // SAFETY: The allocation has space for all 68 coefficients.
+        // blst_precompute_lines initializes every coefficient without reading
+        // the previous contents. Both buffers remain valid for the call,
+        // and blst retains neither pointer. Set the length only after
+        // the entire table has been initialized.
         unsafe {
             blst_precompute_lines(lines.as_mut_ptr(), affine.as_ref());
+            lines.set_len(MILLER_LOOP_LINES);
         }
         Self { lines }
     }
