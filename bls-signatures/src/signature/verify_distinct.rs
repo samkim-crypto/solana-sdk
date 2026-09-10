@@ -22,6 +22,7 @@ use {
     crate::{
         error::BlsError,
         hash::{HashedMessage, PreparedHashedMessage},
+        prepared_g2::{multi_miller_loop, PreparedG2},
         pubkey::{AsPubkeyAffine, PopVerified},
         signature::points::{AddToSignatureProjective, AsSignatureAffine, SignatureProjective},
     },
@@ -76,7 +77,7 @@ impl SignatureProjective {
     fn group_prepared_terms<'b>(
         pairs: impl Iterator<Item = (G1Affine, &'b PreparedHashedMessage)>,
         capacity: usize,
-    ) -> (alloc::vec::Vec<G1Affine>, alloc::vec::Vec<&'b G2Prepared>) {
+    ) -> (alloc::vec::Vec<G1Affine>, alloc::vec::Vec<&'b PreparedG2>) {
         let mut entries = alloc::vec::Vec::with_capacity(capacity);
         for (pubkey_affine, prepared) in pairs {
             entries.push((
@@ -363,7 +364,7 @@ impl SignatureProjective {
         }
 
         let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
-        let signature_prepared = G2Prepared::from(aggregate_signature_affine.0);
+        let signature_prepared = PreparedG2::from(aggregate_signature_affine.0);
 
         #[cfg(feature = "std")]
         let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
@@ -391,8 +392,8 @@ impl SignatureProjective {
         }
         terms.push((neg_g1_generator, &signature_prepared));
 
-        let miller_loop_result = Bls12::multi_miller_loop(&terms);
-        (miller_loop_result.final_exponentiation() == Gt::identity())
+        let miller_loop_result = multi_miller_loop(&terms);
+        (miller_loop_result.final_exp() == blst::blst_fp12::default())
             .then_some(())
             .ok_or(BlsError::VerificationFailed)
     }
@@ -603,7 +604,8 @@ impl SignatureProjective {
         #[cfg(not(feature = "std"))]
         let neg_g1_generator = &neg_g1_generator_val;
 
-        let mut terms = alloc::vec::Vec::with_capacity(grouped_pubkeys_affine.len() + 1);
+        let mut terms =
+            alloc::vec::Vec::with_capacity(grouped_pubkeys_affine.len().saturating_add(1));
         for (pubkey, prepared_hash) in grouped_pubkeys_affine
             .iter()
             .zip(grouped_prepared_hashes.iter())

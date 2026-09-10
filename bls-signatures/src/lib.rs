@@ -44,6 +44,8 @@ pub mod keypair;
 pub(crate) mod macros;
 #[cfg(not(target_os = "solana"))]
 pub mod hash;
+#[cfg(not(target_os = "solana"))]
+mod prepared_g2;
 pub mod proof_of_possession;
 pub mod pubkey;
 #[cfg(not(target_os = "solana"))]

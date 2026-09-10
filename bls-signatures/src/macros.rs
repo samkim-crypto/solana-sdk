@@ -476,6 +476,7 @@ macro_rules! impl_add_to_accumulator {
     };
 }
 
+#[cfg(not(target_os = "solana"))]
 macro_rules! impl_unchecked_conversions {
     (
         $unchecked_type:ident,     // e.g. SignatureAffineUnchecked
@@ -561,7 +562,20 @@ macro_rules! impl_pubkey_wrapper_delegations {
         #[cfg(not(target_os = "solana"))]
         // `VerifySignature` remains public, but this crate only implements it for
         // wrappers whose construction represents the PoP-verified safety boundary.
-        impl<T: AsPubkeyAffine + ?Sized> VerifySignature for $wrapper<T> {}
+        impl<T: AsPubkeyAffine + ?Sized> VerifySignature for $wrapper<T> {
+            fn verify_signature_pre_hashed<S: crate::signature::AsSignatureAffine>(
+                &self,
+                signature: &S,
+                hashed_message: &crate::hash::HashedMessage,
+            ) -> Result<(), crate::error::BlsError> {
+                let pubkey_affine = self.try_as_affine()?;
+                let signature_affine = signature.try_as_affine()?;
+                pubkey_affine
+                    ._verify_signature(&signature_affine, hashed_message)
+                    .then_some(())
+                    .ok_or(crate::error::BlsError::VerificationFailed)
+            }
+        }
 
         #[cfg(not(target_os = "solana"))]
         impl<T: AsPubkeyAffine + ?Sized> AsPubkeyAffine for $wrapper<T> {

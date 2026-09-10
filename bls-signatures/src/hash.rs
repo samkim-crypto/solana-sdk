@@ -1,7 +1,7 @@
 use {
-    crate::proof_of_possession::POP_DST,
+    crate::{prepared_g2::PreparedG2, proof_of_possession::POP_DST},
     alloc::vec::Vec,
-    blstrs::{G2Affine, G2Prepared, G2Projective},
+    blstrs::{G2Affine, G2Projective},
 };
 
 /// Domain separation tag used for hashing messages to curve points to prevent
@@ -32,13 +32,13 @@ impl HashedMessage {
 /// representation. It is useful when the same message is verified repeatedly
 /// against many signatures because it skips the pairing preparation step.
 ///
-/// Memory note: each `PreparedHashedMessage` includes a `G2Prepared`, which is
-/// significantly larger than a plain `HashedMessage` (roughly ~19 KiB per
-/// element in current `blstrs` implementations).
+/// Memory note: each `PreparedHashedMessage` owns a heap-allocated pairing
+/// preparation table (19,584 bytes for a nonidentity point), in addition to
+/// the hashed point. Cloning duplicates the table.
 #[derive(Clone, Debug)]
 pub struct PreparedHashedMessage {
     pub(crate) hashed_message: HashedMessage,
-    pub(crate) prepared: G2Prepared,
+    pub(crate) prepared: PreparedG2,
 }
 
 impl PreparedHashedMessage {
@@ -51,7 +51,7 @@ impl PreparedHashedMessage {
     pub fn from_hashed_message(hashed_message: &HashedMessage) -> Self {
         Self {
             hashed_message: *hashed_message,
-            prepared: G2Prepared::from(hashed_message.0),
+            prepared: PreparedG2::from(hashed_message.0),
         }
     }
 }
