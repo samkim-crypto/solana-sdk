@@ -332,7 +332,7 @@ solana-svm-transaction = { path = "svm-transaction", version = "5.0.0" }
 solana-system-interface = { path = "system-interface", version = "3.3" }
 solana-system-transaction = { path = "system-transaction", version = "4.1.0" }
 solana-system-wasm-js = { path = "system-wasm-js", version = "1.0" }
-solana-sysvar = { path = "sysvar", version = "4.2.0" }
+solana-sysvar = { path = "sysvar", version = "5.0.0" }
 solana-sysvar-id = { path = "sysvar-id", version = "3.0.0" }
 solana-time-utils = { path = "time-utils", version = "3.0.0" }
 solana-transaction = { path = "transaction", version = "4.3.0", default-features = false }
