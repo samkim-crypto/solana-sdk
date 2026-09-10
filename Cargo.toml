@@ -234,7 +234,7 @@ solana-address = { path = "address", version = "2.7.0" }
 solana-address-lookup-table-interface = { path = "address-lookup-table-interface", version = "4.0.0" }
 solana-atomic-u64 = { path = "atomic-u64", version = "3.0.0" }
 solana-big-mod-exp = { path = "big-mod-exp", version = "4.0.0" }
-solana-bincode = { path = "bincode", version = "3.0.0" }
+solana-bincode = { path = "bincode", version = "4.0.0" }
 solana-blake3-hasher = { path = "blake3-hasher", version = "3.0.0" }
 solana-bls-signatures = { path = "bls-signatures", version = "4.0.0" }
 solana-bls12-381 = { path = "bls12-381", version = "0.1.0" }
