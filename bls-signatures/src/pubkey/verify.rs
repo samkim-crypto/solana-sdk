@@ -1,5 +1,3 @@
-#[cfg(feature = "std")]
-use {blstrs::G1Projective, group::Group, std::sync::LazyLock};
 use {
     crate::{
         error::BlsError,
@@ -12,6 +10,8 @@ use {
     blstrs::G1Affine,
     group::prime::PrimeCurveAffine,
 };
+#[cfg(feature = "std")]
+use {blstrs::G1Projective, group::Group, std::sync::LazyLock};
 
 #[cfg(feature = "std")]
 pub(crate) static NEG_G1_GENERATOR_AFFINE: LazyLock<G1Affine> =
@@ -163,8 +163,7 @@ impl PubkeyAffine {
         let generator = G1Affine::generator();
         let payload_pairing =
             blst::blst_fp12::miller_loop(hashed_payload.0.as_ref(), self.0.as_ref());
-        let proof_pairing =
-            blst::blst_fp12::miller_loop(proof.0.as_ref(), generator.as_ref());
+        let proof_pairing = blst::blst_fp12::miller_loop(proof.0.as_ref(), generator.as_ref());
 
         // Compare the pairings using one final exponentiation.
         blst::blst_fp12::finalverify(&payload_pairing, &proof_pairing)
