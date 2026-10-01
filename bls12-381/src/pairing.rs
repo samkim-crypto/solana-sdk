@@ -53,8 +53,8 @@ impl GtElement {
     /// Not `const fn`: array equality is not const-callable. The byte loop it
     /// replaces was const, but cost ~4,055 CU — ~7 per byte, of which the
     /// per-byte flag-index test was two thirds — against ~28 CU here. This is
-    /// on the hot path: [`pairing_check`] calls it on every successful
-    /// verification.
+    /// on the hot path: [`pairing_check`] calls it after a successful pairing
+    /// syscall for batches of two or more pairs.
     ///
     /// The comparison lowers to the `sol_memcmp_` syscall, whose cost does not
     /// depend on the length, so all 576 bytes cost the same as eight would.
@@ -249,9 +249,13 @@ pub fn pairing(
 /// the 576-byte [`GtElement`] off the caller's stack, which suits a Groth16
 /// verifier that would only discard it.
 ///
-/// Like [`pairing_map_assign`], the syscall fully validates every input, so the
-/// points do not need a separate [`G1Point::validate`] or
-/// [`G2Point::validate`] pass first.
+/// Every input is fully validated, so the points do not need a separate
+/// [`G1Point::validate`] or [`G2Point::validate`] pass first.
+///
+/// For a single pair, this validates both points and checks whether either is
+/// infinity, avoiding the pairing syscall. For valid points in the prime-order
+/// subgroups, non-degeneracy implies `e(P, Q) == 1` exactly when `P` or `Q` is
+/// infinity. Larger batches use [`pairing_map_assign`].
 ///
 /// # Errors
 ///
@@ -294,6 +298,16 @@ pub fn pairing_check(
     // equal by now, so testing `g1_points` alone covers both slices.
     if g1_points.is_empty() {
         return Err(Bls12381Error::EmptyBatch);
+    }
+
+    if let ([g1], [g2]) = (g1_points, g2_points) {
+        // The identity test is valid only in the prime-order subgroups.
+        // Validate both inputs before returning success, even if one is
+        // infinity, so an invalid partner still produces `InvalidInput`.
+        if !g1.validate(endianness) || !g2.validate(endianness) {
+            return Err(Bls12381Error::InvalidInput);
+        }
+        return Ok(g1.is_infinity(endianness) || g2.is_infinity(endianness));
     }
 
     let mut out = MaybeUninit::uninit();
