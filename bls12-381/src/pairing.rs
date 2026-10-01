@@ -48,24 +48,37 @@ impl GtElement {
 
     /// Whether this is the multiplicative identity.
     ///
-    /// Evaluated locally, without a syscall.
-    ///
-    /// Not `const fn`: array equality is not const-callable. The byte loop it
-    /// replaces was const, but cost ~4,055 CU — ~7 per byte, of which the
-    /// per-byte flag-index test was two thirds — against ~28 CU here. This is
-    /// on the hot path: [`pairing_check`] calls it after a successful pairing
-    /// syscall for batches of two or more pairs.
-    ///
-    /// The comparison lowers to the `sol_memcmp_` syscall, whose cost does not
-    /// depend on the length, so all 576 bytes cost the same as eight would.
-    ///
-    // `#[inline]` is load-bearing: `#[inline(never)]` measured 6 CU worse both
-    // standalone and inside `pairing_check`.
+    /// Compares all 576 bytes with the canonical identity encoding. On Solana,
+    /// calls the memory comparison syscall directly to avoid an intermediate
+    /// `memcmp` function call. No curve operation or point validation is needed.
     #[inline]
     pub fn is_identity(&self, endianness: Endianness) -> bool {
-        match endianness {
-            Endianness::Little => self.0 == GT_IDENTITY_LE.0,
-            Endianness::Big => self.0 == GT_IDENTITY_BE.0,
+        let identity = match endianness {
+            Endianness::Little => &GT_IDENTITY_LE,
+            Endianness::Big => &GT_IDENTITY_BE,
+        };
+
+        #[cfg(any(target_os = "solana", target_arch = "bpf"))]
+        {
+            let mut result = MaybeUninit::<i32>::uninit();
+            // SAFETY: both encodings are valid for reads of GT_ELEMENT_SIZE
+            // bytes, and `result` is aligned and valid for writes of an i32.
+            // The memory comparison syscall initializes `result` before
+            // returning. It permits unaligned byte inputs.
+            unsafe {
+                solana_define_syscall::definitions::sol_memcmp_(
+                    self.0.as_ptr(),
+                    identity.0.as_ptr(),
+                    GT_ELEMENT_SIZE as u64,
+                    result.as_mut_ptr(),
+                );
+                result.assume_init() == 0
+            }
+        }
+
+        #[cfg(not(any(target_os = "solana", target_arch = "bpf")))]
+        {
+            self.0 == identity.0
         }
     }
 
