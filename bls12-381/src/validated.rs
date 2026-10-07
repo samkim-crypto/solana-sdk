@@ -6,7 +6,7 @@
 
 use {
     crate::{Endianness, G1Compressed, G1Point, G2Compressed, G2Point, Scalar},
-    core::marker::PhantomData,
+    core::{marker::PhantomData, mem::MaybeUninit},
 };
 
 mod sealed {
@@ -117,6 +117,49 @@ macro_rules! validated_group {
             pub fn into_point(self) -> $raw {
                 self.point
             }
+
+            /// Sums validated points without repeating subgroup checks.
+            /// Returns infinity for empty input.
+            #[inline]
+            pub fn sum_validated<'a>(points: impl IntoIterator<Item = $view<'a, E>>) -> Option<Self>
+            where
+                E: 'a,
+            {
+                let mut points = points.into_iter();
+                let Some(first) = points.next() else {
+                    return Some(Self::infinity());
+                };
+                let mut a = MaybeUninit::<$raw>::uninit();
+                let mut b = MaybeUninit::<$raw>::uninit();
+                // Borrow the first point to avoid copying it into an initial
+                // accumulator, then alternate the output buffers.
+                let mut acc = first.as_point();
+                loop {
+                    let Some(p) = points.next() else {
+                        return Some(Self::from_valid(*acc));
+                    };
+                    if !acc.add_assign_unchecked(p.as_point(), &mut a, E::ENDIANNESS) {
+                        return None;
+                    }
+                    let Some(q) = points.next() else {
+                        // SAFETY: `add_assign_unchecked` returned `true`, so
+                        // `a` is fully initialized.
+                        return Some(Self::from_valid(unsafe { a.assume_init() }));
+                    };
+                    // SAFETY: `add_assign_unchecked` returned `true`, so
+                    // `a` is fully initialized.
+                    if !unsafe { a.assume_init_ref() }.add_assign_unchecked(
+                        q.as_point(),
+                        &mut b,
+                        E::ENDIANNESS,
+                    ) {
+                        return None;
+                    }
+                    // SAFETY: `add_assign_unchecked` returned `true`, so
+                    // `b` is fully initialized.
+                    acc = unsafe { b.assume_init_ref() };
+                }
+            }
         }
 
         // Match the fallible named operations of the raw SDK API. Their
@@ -151,6 +194,7 @@ macro_rules! validated_group {
             }
 
             /// Adds two points without repeating subgroup checks.
+            #[doc = concat!("For accumulation, use [`", stringify!($owned), "::sum_validated`] to avoid returning an owned point after each addition.")]
             #[inline]
             pub fn add(self, other: Self) -> Option<$owned<E>> {
                 self.point
@@ -204,6 +248,12 @@ macro_rules! validated_group {
                     point,
                     marker: PhantomData,
                 })
+            }
+
+            /// Sums the points, returning infinity for an empty slice.
+            #[inline]
+            pub fn sum(self) -> Option<$owned<E>> {
+                $owned::sum_validated(self.iter())
             }
         }
     };
