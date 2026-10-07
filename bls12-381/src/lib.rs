@@ -50,6 +50,12 @@ pub mod g2;
 pub mod pairing;
 /// Scalar field elements.
 pub mod scalar;
+/// Encoding-bound subgroup-valid points and immutable views.
+///
+/// Infinity is valid. Protocols requiring nonidentity points must check that
+/// separately. These types have private fields, no mutable raw access, and no
+/// `Pod`/`Zeroable` implementation. Extracting a raw point discards the guarantee.
+pub mod validated;
 
 pub use {error::*, g1::*, g2::*, pairing::*, scalar::*};
 
