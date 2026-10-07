@@ -50,6 +50,8 @@ pub mod g2;
 pub mod pairing;
 /// Scalar field elements.
 pub mod scalar;
+/// Encoding-bound subgroup-valid points and immutable views.
+pub mod validated;
 
 pub use {error::*, g1::*, g2::*, pairing::*, scalar::*};
 
