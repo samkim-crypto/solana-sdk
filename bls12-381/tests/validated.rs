@@ -1,4 +1,4 @@
-mod common;
+pub mod common;
 
 use solana_bls12_381::{
     validated::{

@@ -22,6 +22,8 @@ and zero-knowledge proof (e.g. Groth16) validation.
 - **Validated point types.** Owned points and immutable views retain subgroup
   validity and byte order across operations. Their summation helpers accumulate
   validated inputs without repeated subgroup checks or caller-managed buffers.
+- **Bounded scalar multiplication.** `mul_bounded` selects short addition
+  chains for small public scalars and falls back to native multiplication.
 - **Pairing checks.** `pairing_check` tests whether a product of pairings is the
   identity without materializing a 576-byte `Gt` element, and refuses to
   succeed on an empty batch.
@@ -298,6 +300,12 @@ the accumulation.
 allocating form spends constructing its `Option<Self>`. When using validated
 points, pass the full accumulation to `sum_validated` to avoid an owned result
 after every addition.
+
+**Use `mul_bounded` for short public scalars.** It uses an addition chain when
+that chain fits the budget of 18 group additions for G1 or 26 for G2, including
+doublings. It validates the point even for scalars zero and one. When a scalar
+falls outside the budget, classification adds overhead before native
+multiplication; use `mul` directly when general scalars are expected.
 
 **Take points uncompressed when you can afford the bytes.** Decompression
 validates, so it replaces rather than adds to a `validate` — but it costs 2,114
