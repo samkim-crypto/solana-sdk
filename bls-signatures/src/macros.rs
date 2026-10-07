@@ -497,7 +497,8 @@ macro_rules! impl_unchecked_conversions {
         $projective_type:ident,    // e.g. SignatureProjective
         $compressed_type:ident,    // e.g. SignatureCompressed
         $uncompressed_type:ident,  // e.g. Signature
-        $internal_type:ty          // e.g. G2Affine
+        $internal_type:ty,         // e.g. G2Affine
+        $reject_identity:expr     // true for public keys, false for signatures
     ) => {
         // Conversion from Compressed Bytes (Unchecked)
         #[cfg(not(target_os = "solana"))]
@@ -506,6 +507,11 @@ macro_rules! impl_unchecked_conversions {
             fn try_from(bytes: $compressed_type) -> Result<Self, Self::Error> {
                 let point = Option::from(<$internal_type>::from_compressed_unchecked(&bytes.0))
                     .ok_or(crate::error::BlsError::PointConversion)?;
+                if $reject_identity
+                    && bool::from(group::prime::PrimeCurveAffine::is_identity(&point))
+                {
+                    return Err(crate::error::BlsError::PointConversion);
+                }
                 Ok(Self(point))
             }
         }
@@ -527,6 +533,11 @@ macro_rules! impl_unchecked_conversions {
                 crate::macros::check_uncompressed_flags(bytes.0[0])?;
                 let point = Option::from(<$internal_type>::from_uncompressed_unchecked(&bytes.0))
                     .ok_or(crate::error::BlsError::PointConversion)?;
+                if $reject_identity
+                    && bool::from(group::prime::PrimeCurveAffine::is_identity(&point))
+                {
+                    return Err(crate::error::BlsError::PointConversion);
+                }
                 Ok(Self(point))
             }
         }
