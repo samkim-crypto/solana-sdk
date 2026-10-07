@@ -9,7 +9,7 @@ use solana_bls12_381::{
 };
 
 macro_rules! group_tests {
-    ($test:ident, $point:ident, $owned:ident, $view:ident, $slice:ident, $size:expr, $torsion:ident) => {
+    ($test:ident, $sum_test:ident, $point:ident, $owned:ident, $view:ident, $slice:ident, $size:expr, $torsion:ident) => {
         #[test]
         fn $test() {
             fn run<E: Encoding>() {
@@ -66,11 +66,86 @@ macro_rules! group_tests {
             run::<LittleEndian>();
             run::<BigEndian>();
         }
+
+        #[test]
+        fn $sum_test() {
+            fn run<E: Encoding>() {
+                let e = E::ENDIANNESS;
+                let p = $point::generator(e);
+                let q = p.mul(&Scalar::from_u64(7, e), e).unwrap();
+                let vp = $view::<E>::validate(&p).unwrap();
+                let vq = $view::<E>::validate(&q).unwrap();
+                for n in [0, 1, 2, 3, 7, 8, 31, 32] {
+                    let points: Vec<_> = (0..n).map(|i| if i % 2 == 0 { p } else { q }).collect();
+                    let expected = points
+                        .iter()
+                        .fold($point::infinity(e), |acc, p| acc.add(p, e).unwrap());
+                    let valid = $slice::<E>::validate(&points).unwrap();
+                    assert_eq!(
+                        $owned::<E>::sum_validated(valid.iter())
+                            .unwrap()
+                            .into_point(),
+                        expected,
+                    );
+                    // Successful operations also establish validity; callers do
+                    // not need to repeat validation before summing their results.
+                    let owned: Vec<_> = points
+                        .iter()
+                        .map(|p| $owned::<E>::from_mul(p, &Scalar::one(e)).unwrap())
+                        .collect();
+                    assert_eq!(
+                        $owned::<E>::sum_validated(owned.iter().map(|p| p.as_ref()))
+                            .unwrap()
+                            .into_point(),
+                        expected,
+                    );
+                    assert_eq!(valid.sum().unwrap().into_point(), expected);
+
+                    let repeated = $owned::<E>::sum_validated(
+                        core::iter::once(vp).chain(core::iter::repeat(vq).take(n)),
+                    )
+                    .unwrap();
+                    let multiple = q
+                        .mul(&Scalar::from_u64(u64::try_from(n).unwrap(), e), e)
+                        .unwrap();
+                    assert_eq!(Some(repeated.into_point()), p.add(&multiple, e));
+                }
+
+                let infinity = $point::infinity(e);
+                for points in [vec![infinity], vec![p, p.neg(e).unwrap(), infinity]] {
+                    let valid = $slice::<E>::validate(&points).unwrap();
+                    assert!(valid.sum().unwrap().as_ref().is_infinity());
+                }
+
+                let torsion = common::$torsion(e);
+                let mut malformed = infinity;
+                malformed.0[$size - 1] |= 1;
+                for bad in [$point([0; $size]), $point([255; $size]), malformed, torsion] {
+                    for points in [vec![bad], vec![bad, p], vec![p, p, bad]] {
+                        assert!($slice::<E>::validate(&points)
+                            .and_then(|points| points.sum())
+                            .is_none());
+                    }
+                }
+                // A valid final sum cannot stand in for individual input checks.
+                let neg_torsion = torsion.neg_unchecked(e).unwrap();
+                assert_eq!(torsion.add_unchecked(&neg_torsion, e), Some(infinity));
+                assert!($slice::<E>::validate(&[torsion, neg_torsion])
+                    .and_then(|points| points.sum())
+                    .is_none());
+                assert!($slice::<E>::validate(&[p, torsion, neg_torsion])
+                    .and_then(|points| points.sum())
+                    .is_none());
+            }
+            run::<LittleEndian>();
+            run::<BigEndian>();
+        }
     };
 }
 
 group_tests!(
     g1_invariants,
+    g1_sums,
     G1Point,
     ValidG1,
     ValidG1Ref,
@@ -80,6 +155,7 @@ group_tests!(
 );
 group_tests!(
     g2_invariants,
+    g2_sums,
     G2Point,
     ValidG2,
     ValidG2Ref,
