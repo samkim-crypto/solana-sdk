@@ -46,6 +46,7 @@ pub mod error;
 pub mod g1;
 /// Points and encodings in the G2 group.
 pub mod g2;
+mod mul_bounded;
 /// Pairing operations and the target group.
 pub mod pairing;
 /// Scalar field elements.

@@ -1,4 +1,10 @@
-use solana_bls12_381::{Endianness, G1Point, G2Point};
+use solana_bls12_381::{Endianness, G1Point, G2Point, SCALAR_SIZE};
+
+/// The scalar field order `r`, big-endian.
+pub fn scalar_field_order() -> [u8; SCALAR_SIZE] {
+    array_bytes::hex2array("73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001")
+        .unwrap()
+}
 
 // Canonical on-curve encoding with G1 x = 4, obtained by decompressing
 // without a subgroup check. The pairing tests check that it is on the curve

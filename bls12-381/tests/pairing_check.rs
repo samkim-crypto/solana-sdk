@@ -1,4 +1,4 @@
-mod common;
+pub mod common;
 
 use solana_bls12_381::{
     pairing, pairing_check, Bls12381Error, Endianness, G1Point, G2Point, Scalar,
