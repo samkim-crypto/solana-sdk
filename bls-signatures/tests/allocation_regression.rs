@@ -79,10 +79,12 @@ unsafe impl GlobalAlloc for CountingAllocator {
 const ITERATIONS: usize = 100;
 const WARMUP: usize = 8;
 
-// Allocation ceilings for blstrs 0.7.1 and blst 0.3.17.
+// Per-operation allocation ceilings for blstrs 0.7.1 and blst 0.3.17.
 // Keep the control allocation exact so a disabled counter cannot pass.
 fn check_budget(
     label: &str,
+    peak_allocs: usize,
+    peak_bytes: usize,
     allocs: usize,
     bytes: usize,
     reallocs: usize,
@@ -134,20 +136,13 @@ fn check_budget(
         "unbalanced allocated/freed bytes in {label}"
     );
 
-    let allocation_limit = ITERATIONS
-        .checked_mul(max_allocs)
-        .expect("allocation budget overflow");
-    let byte_limit = ITERATIONS
-        .checked_mul(max_bytes)
-        .expect("byte budget overflow");
-
     assert!(
-        allocs <= allocation_limit,
-        "{label}: {allocs} allocations exceed the limit of {max_allocs} per operation",
+        peak_allocs <= max_allocs,
+        "{label}: {peak_allocs} allocations in one operation exceed the limit of {max_allocs}",
     );
     assert!(
-        bytes <= byte_limit,
-        "{label}: {bytes} requested bytes exceed the limit of {max_bytes} per operation",
+        peak_bytes <= max_bytes,
+        "{label}: {peak_bytes} requested bytes in one operation exceed the limit of {max_bytes}",
     );
 
     if label == "control/box64" {
@@ -168,11 +163,26 @@ fn measure(label: &str, mut operation: impl FnMut() -> bool) {
     FREED_BYTES.store(0, Ordering::Relaxed);
 
     let mut matching_results = 0usize;
+    let mut peak_allocs = 0usize;
+    let mut peak_bytes = 0usize;
     COUNTING.store(true, Ordering::SeqCst);
     for _ in 0..ITERATIONS {
+        // Budget each call separately so a spike cannot hide behind cheaper calls.
+        let allocs_before = ALLOCS.load(Ordering::Relaxed);
+        let bytes_before = BYTES.load(Ordering::Relaxed);
         matching_results = matching_results
             .checked_add(usize::from(black_box(operation())))
             .expect("verification result counter overflow");
+        let op_allocs = ALLOCS
+            .load(Ordering::Relaxed)
+            .checked_sub(allocs_before)
+            .expect("allocation counter decreased");
+        let op_bytes = BYTES
+            .load(Ordering::Relaxed)
+            .checked_sub(bytes_before)
+            .expect("byte counter decreased");
+        peak_allocs = peak_allocs.max(op_allocs);
+        peak_bytes = peak_bytes.max(op_bytes);
     }
     COUNTING.store(false, Ordering::SeqCst);
 
@@ -191,7 +201,16 @@ fn measure(label: &str, mut operation: impl FnMut() -> bool) {
         reallocs as f64 / n,
         deallocs as f64 / n,
     );
-    check_budget(label, allocs, bytes, reallocs, deallocs, freed_bytes);
+    check_budget(
+        label,
+        peak_allocs,
+        peak_bytes,
+        allocs,
+        bytes,
+        reallocs,
+        deallocs,
+        freed_bytes,
+    );
 }
 
 fn main() {
