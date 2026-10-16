@@ -32,12 +32,13 @@ use {alloc::vec::Vec, rayon::prelude::*};
 
 impl SignatureProjective {
     /// Group pairing terms by message hash in `O(n log n)` time by sorting keys.
-    fn group_hashed_terms(
-        pairs: impl Iterator<Item = (G1Affine, HashedMessage)>,
+    fn try_group_hashed_terms(
+        pairs: impl Iterator<Item = Result<(G1Affine, HashedMessage), BlsError>>,
         capacity: usize,
-    ) -> (alloc::vec::Vec<G1Affine>, alloc::vec::Vec<HashedMessage>) {
+    ) -> Result<alloc::vec::Vec<(G1Affine, HashedMessage)>, BlsError> {
         let mut entries = alloc::vec::Vec::with_capacity(capacity);
-        for (pubkey_affine, hashed_message) in pairs {
+        for pair in pairs {
+            let (pubkey_affine, hashed_message) = pair?;
             entries.push((
                 hashed_message.0.to_uncompressed(),
                 pubkey_affine,
@@ -50,8 +51,7 @@ impl SignatureProjective {
         #[cfg(not(feature = "parallel"))]
         entries.sort_unstable_by(|a, b| a.0.cmp(&b.0));
 
-        let mut grouped_pubkeys = alloc::vec::Vec::with_capacity(entries.len());
-        let mut grouped_hashed_messages = alloc::vec::Vec::with_capacity(entries.len());
+        let mut grouped_terms = alloc::vec::Vec::with_capacity(entries.len());
 
         for chunk in entries.chunk_by(|a, b| a.0 == b.0) {
             let mut aggregate_pubkey = G1Projective::from(chunk[0].1);
@@ -61,12 +61,10 @@ impl SignatureProjective {
                     aggregate_pubkey += &item.1;
                 }
             }
-            grouped_pubkeys.push(aggregate_pubkey);
-            grouped_hashed_messages.push(chunk[0].2);
+            grouped_terms.push((G1Affine::from(aggregate_pubkey), chunk[0].2));
         }
 
-        let grouped_pubkeys_affine = grouped_pubkeys.into_iter().map(Into::into).collect();
-        (grouped_pubkeys_affine, grouped_hashed_messages)
+        Ok(grouped_terms)
     }
 
     /// Group pairing terms by message hash in `O(n log n)` time by sorting keys,
@@ -265,24 +263,20 @@ impl SignatureProjective {
             return Err(BlsError::EmptyAggregation);
         }
         let public_keys_len = public_keys.len();
-        let mut pubkeys_affine = alloc::vec::Vec::with_capacity(public_keys_len);
-        let mut hashed_messages_owned = alloc::vec::Vec::with_capacity(public_keys_len);
+        let mut pairs = alloc::vec::Vec::with_capacity(public_keys_len);
         for (pubkey, hashed_message) in public_keys.zip(hashed_messages) {
             let g1_affine = pubkey.try_as_affine()?;
             if bool::from(g1_affine.0.is_identity()) {
                 return Err(BlsError::VerificationFailed);
             }
-            pubkeys_affine.push(g1_affine.0);
-            hashed_messages_owned.push(*hashed_message);
+            pairs.push((g1_affine.0, *hashed_message));
         }
 
         let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
 
-        let (grouped_pubkeys_affine, grouped_hashed_messages) = Self::group_hashed_terms(
-            pubkeys_affine.into_iter().zip(hashed_messages_owned),
-            public_keys_len,
-        );
-        for pubkey in &grouped_pubkeys_affine {
+        let grouped_terms =
+            Self::try_group_hashed_terms(pairs.into_iter().map(Ok), public_keys_len)?;
+        for (pubkey, _) in &grouped_terms {
             if bool::from(pubkey.is_identity()) {
                 return Err(BlsError::VerificationFailed);
             }
@@ -290,11 +284,7 @@ impl SignatureProjective {
 
         // Compute each message term directly without temporary G2 tables.
         let mut message_pairing = blst::blst_fp12::default();
-        for (index, (pubkey, hashed_message)) in grouped_pubkeys_affine
-            .iter()
-            .zip(grouped_hashed_messages.iter())
-            .enumerate()
-        {
+        for (index, (pubkey, hashed_message)) in grouped_terms.iter().enumerate() {
             let term = blst::blst_fp12::miller_loop(hashed_message.0.as_ref(), pubkey.as_ref());
             if index == 0 {
                 message_pairing = term;
@@ -551,7 +541,9 @@ impl SignatureProjective {
         if public_keys.is_empty() {
             return Err(BlsError::EmptyAggregation);
         }
-        let pubkeys_affine: Vec<_> = public_keys
+        // Preallocate the input count to avoid growing a small vector.
+        let mut pubkeys_affine = Vec::with_capacity(public_keys.len());
+        public_keys
             .par_iter()
             .map(|pk| {
                 let affine = pk.try_as_affine()?;
@@ -560,27 +552,27 @@ impl SignatureProjective {
                 }
                 Ok::<G1Affine, BlsError>(affine.0)
             })
-            .collect::<Result<_, _>>()?;
+            .collect_into_vec(&mut pubkeys_affine);
 
         let public_keys_len = public_keys.len();
-        let (grouped_pubkeys_affine, grouped_hashed_messages) = Self::group_hashed_terms(
+        let grouped_terms = Self::try_group_hashed_terms(
             pubkeys_affine
                 .into_iter()
-                .zip(hashed_messages.iter().copied()),
+                .zip(hashed_messages.iter().copied())
+                .map(|(pubkey, hashed_message)| pubkey.map(|pubkey| (pubkey, hashed_message))),
             public_keys_len,
-        );
+        )?;
         let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
 
-        for pubkey in &grouped_pubkeys_affine {
+        for (pubkey, _) in &grouped_terms {
             if bool::from(pubkey.is_identity()) {
                 return Err(BlsError::VerificationFailed);
             }
         }
 
         // Compute message pairings on workers without temporary G2 tables.
-        let message_pairing = grouped_pubkeys_affine
+        let message_pairing = grouped_terms
             .par_iter()
-            .zip(grouped_hashed_messages.par_iter())
             .map(|(pubkey, hashed_message)| {
                 blst::blst_fp12::miller_loop(hashed_message.0.as_ref(), pubkey.as_ref())
             })

@@ -249,6 +249,14 @@ fn parallel_distinct_screening_preserves_public_key_errors() {
     // The keypair already supplies a PoP-verified key.
     let valid_keys = [unsafe { PopVerified::new_unchecked(compressed) }; 3];
     assert_eq!(
+        SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+            &valid_keys,
+            &aggregate_signature,
+            &hashes,
+        ),
+        Ok(()),
+    );
+    assert_eq!(
         SignatureProjective::par_verify_distinct_aggregated_prepared(
             &valid_keys,
             &aggregate_signature,
@@ -261,6 +269,20 @@ fn parallel_distinct_screening_preserves_public_key_errors() {
         let mut public_keys = valid_keys;
         // Deliberately bypass PoP validation to exercise malformed-key rejection.
         public_keys[bad_index] = unsafe { PopVerified::new_unchecked(malformed) };
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                &public_keys,
+                &aggregate_signature,
+                &hashes,
+            ),
+            Err(decode_error.clone()),
+            "pre-hashed screening: malformed key at {bad_index}",
+        );
+        assert_eq!(
+            SignatureProjective::par_verify_distinct(&public_keys, &signatures, &messages),
+            Err(decode_error.clone()),
+            "raw screening: malformed key at {bad_index}",
+        );
         assert_eq!(
             SignatureProjective::par_verify_distinct_aggregated_prepared(
                 &public_keys,
@@ -278,6 +300,15 @@ fn parallel_distinct_screening_preserves_public_key_errors() {
         let mut public_keys = [keypair.public; 3];
         // An invalid key must be rejected before decoding the aggregate signature.
         public_keys[bad_index] = unsafe { PopVerified::new_unchecked(identity) };
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                &public_keys,
+                &malformed_signature,
+                &hashes,
+            ),
+            Err(BlsError::VerificationFailed),
+            "identity key at {bad_index} precedes signature decoding",
+        );
         assert_eq!(
             SignatureProjective::par_verify_distinct_aggregated_prepared(
                 &public_keys,
