@@ -39,7 +39,7 @@ impl SignatureProjective {
         let mut entries = alloc::vec::Vec::with_capacity(capacity);
         for (pubkey_affine, hashed_message) in pairs {
             entries.push((
-                hashed_message.0.to_uncompressed(),
+                hashed_message.0.to_compressed(),
                 pubkey_affine,
                 hashed_message,
             ));
@@ -79,7 +79,7 @@ impl SignatureProjective {
         for pair in pairs {
             let (pubkey_affine, prepared) = pair?;
             entries.push((
-                prepared.hashed_message.0.to_uncompressed(),
+                prepared.hashed_message.0.to_compressed(),
                 pubkey_affine,
                 &prepared.prepared,
             ));

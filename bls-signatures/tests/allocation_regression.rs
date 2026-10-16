@@ -119,11 +119,11 @@ fn check_budget(
         name if name.starts_with("pop/raw/standard/") => (0, 0),
         name if name.starts_with("pop/raw/custom/") => (0, 0),
         name if name.starts_with("pop/pre_hashed/") => (0, 0),
-        name if name.starts_with("distinct/seq/") && name.contains("/raw/") => (6, 2_592),
-        name if name.starts_with("distinct/seq/") && name.contains("/pre_hashed/") => (5, 2_208),
-        name if name.starts_with("distinct/par/") && name.contains("/raw/") => (9, 3_632),
-        name if name.starts_with("distinct/par/") && name.contains("/pre_hashed/") => (8, 2_864),
-        name if name.starts_with("distinct/") && name.contains("/prepared/") => (3, 1_008),
+        name if name.starts_with("distinct/seq/") && name.contains("/raw/") => (6, 2_400),
+        name if name.starts_with("distinct/seq/") && name.contains("/pre_hashed/") => (5, 2_016),
+        name if name.starts_with("distinct/par/") && name.contains("/raw/") => (9, 3_440),
+        name if name.starts_with("distinct/par/") && name.contains("/pre_hashed/") => (8, 2_672),
+        name if name.starts_with("distinct/") && name.contains("/prepared/") => (3, 816),
         _ => panic!("missing allocation budget for {label}"),
     };
 
