@@ -32,10 +32,13 @@ use {alloc::vec::Vec, rayon::prelude::*};
 
 impl SignatureProjective {
     /// Group pairing terms by message hash in `O(n log n)` time by sorting keys.
-    fn group_hashed_terms(
-        pairs: impl Iterator<Item = (G1Affine, HashedMessage)>,
+    fn group_hashed_terms<'b>(
+        pairs: impl Iterator<Item = (G1Affine, &'b HashedMessage)>,
         capacity: usize,
-    ) -> (alloc::vec::Vec<G1Affine>, alloc::vec::Vec<HashedMessage>) {
+    ) -> (
+        alloc::vec::Vec<G1Affine>,
+        alloc::vec::Vec<&'b HashedMessage>,
+    ) {
         let mut entries = alloc::vec::Vec::with_capacity(capacity);
         for (pubkey_affine, hashed_message) in pairs {
             entries.push((
@@ -266,20 +269,20 @@ impl SignatureProjective {
         }
         let public_keys_len = public_keys.len();
         let mut pubkeys_affine = alloc::vec::Vec::with_capacity(public_keys_len);
-        let mut hashed_messages_owned = alloc::vec::Vec::with_capacity(public_keys_len);
+        let mut hashed_message_refs = alloc::vec::Vec::with_capacity(public_keys_len);
         for (pubkey, hashed_message) in public_keys.zip(hashed_messages) {
             let g1_affine = pubkey.try_as_affine()?;
             if bool::from(g1_affine.0.is_identity()) {
                 return Err(BlsError::VerificationFailed);
             }
             pubkeys_affine.push(g1_affine.0);
-            hashed_messages_owned.push(*hashed_message);
+            hashed_message_refs.push(hashed_message);
         }
 
         let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
 
         let (grouped_pubkeys_affine, grouped_hashed_messages) = Self::group_hashed_terms(
-            pubkeys_affine.into_iter().zip(hashed_messages_owned),
+            pubkeys_affine.into_iter().zip(hashed_message_refs),
             public_keys_len,
         );
         for pubkey in &grouped_pubkeys_affine {
@@ -564,9 +567,7 @@ impl SignatureProjective {
 
         let public_keys_len = public_keys.len();
         let (grouped_pubkeys_affine, grouped_hashed_messages) = Self::group_hashed_terms(
-            pubkeys_affine
-                .into_iter()
-                .zip(hashed_messages.iter().copied()),
+            pubkeys_affine.into_iter().zip(hashed_messages.iter()),
             public_keys_len,
         );
         let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
