@@ -124,14 +124,14 @@ fn check_budget(
         name if name.starts_with("distinct/prepared/par/unique/") => (3, 1_008),
         name if name.starts_with("distinct/prepared/par/shared/") => (3, 1_008),
         // Raw and pre-hashed distinct-message screening with the same two inputs.
-        name if name.starts_with("distinct/raw/seq/unique/") => (11, 61_456),
-        name if name.starts_with("distinct/raw/seq/shared/") => (10, 41_824),
-        name if name.starts_with("distinct/pre_hashed/seq/unique/") => (10, 61_072),
-        name if name.starts_with("distinct/pre_hashed/seq/shared/") => (9, 41_440),
-        name if name.starts_with("distinct/raw/par/unique/") => (14, 62_560),
-        name if name.starts_with("distinct/raw/par/shared/") => (13, 42_960),
-        name if name.starts_with("distinct/pre_hashed/par/unique/") => (13, 61_792),
-        name if name.starts_with("distinct/pre_hashed/par/shared/") => (12, 42_192),
+        name if name.starts_with("distinct/raw/seq/unique/") => (6, 2_592),
+        name if name.starts_with("distinct/raw/seq/shared/") => (6, 2_592),
+        name if name.starts_with("distinct/pre_hashed/seq/unique/") => (5, 2_208),
+        name if name.starts_with("distinct/pre_hashed/seq/shared/") => (5, 2_208),
+        name if name.starts_with("distinct/raw/par/unique/") => (9, 3_632),
+        name if name.starts_with("distinct/raw/par/shared/") => (9, 3_632),
+        name if name.starts_with("distinct/pre_hashed/par/unique/") => (8, 2_864),
+        name if name.starts_with("distinct/pre_hashed/par/shared/") => (8, 2_864),
         _ => panic!("missing allocation budget for {label}"),
     };
 
