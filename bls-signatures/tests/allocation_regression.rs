@@ -123,6 +123,15 @@ fn check_budget(
         name if name.starts_with("distinct/prepared/seq/shared/") => (3, 1_008),
         name if name.starts_with("distinct/prepared/par/unique/") => (3, 1_008),
         name if name.starts_with("distinct/prepared/par/shared/") => (3, 1_008),
+        // Raw and pre-hashed distinct-message screening with the same two inputs.
+        name if name.starts_with("distinct/raw/seq/unique/") => (11, 61_456),
+        name if name.starts_with("distinct/raw/seq/shared/") => (10, 41_824),
+        name if name.starts_with("distinct/pre_hashed/seq/unique/") => (10, 61_072),
+        name if name.starts_with("distinct/pre_hashed/seq/shared/") => (9, 41_440),
+        name if name.starts_with("distinct/raw/par/unique/") => (14, 62_560),
+        name if name.starts_with("distinct/raw/par/shared/") => (13, 42_960),
+        name if name.starts_with("distinct/pre_hashed/par/unique/") => (13, 61_792),
+        name if name.starts_with("distinct/pre_hashed/par/shared/") => (12, 42_192),
         _ => panic!("missing allocation budget for {label}"),
     };
 
@@ -265,6 +274,7 @@ fn run_allocation_regression() {
     println!("Counts include destruction of temporaries within each operation.");
     println!("aggregate rows include aggregation of two affine keys and signatures.");
     println!("distinct/prepared rows use two affine keys/signatures and reused preparations.");
+    println!("distinct/raw and distinct/pre_hashed include signature aggregation of two inputs.");
     #[cfg(feature = "parallel")]
     println!("par_aggregate rows call the parallel helpers with the same two inputs.");
 
@@ -301,7 +311,7 @@ fn run_allocation_regression() {
         });
 
         measure_pop_paths(&keypair, &other_keypair);
-        measure_distinct_prepared_paths(&keypair, &other_keypair);
+        measure_distinct_paths(&keypair, &other_keypair);
 
         for (status, encoded, expected) in [
             ("valid", &valid, Ok(())),
@@ -429,7 +439,7 @@ fn measure_pop_paths(keypair: &Keypair, other_keypair: &Keypair) {
     }
 }
 
-fn measure_distinct_prepared_paths(keypair: &Keypair, other_keypair: &Keypair) {
+fn measure_distinct_paths(keypair: &Keypair, other_keypair: &Keypair) {
     let public_keys = [keypair.public, other_keypair.public];
     let message_a: &[u8] = b"distinct allocation A";
     let message_b: &[u8] = b"distinct allocation B";
@@ -439,6 +449,7 @@ fn measure_distinct_prepared_paths(keypair: &Keypair, other_keypair: &Keypair) {
         ("shared", [message_a, message_a]),
     ] {
         // Build and retain fixtures with counting disabled.
+        let hashes = messages.map(HashedMessage::new);
         let preparations = messages.map(PreparedHashedMessage::new);
         let valid: [SignatureAffine; 2] = [
             keypair.sign(messages[0]).into(),
@@ -450,6 +461,39 @@ fn measure_distinct_prepared_paths(keypair: &Keypair, other_keypair: &Keypair) {
             ("valid", &valid, Ok(())),
             ("wrong_message", &wrong, Err(BlsError::VerificationFailed)),
         ] {
+            measure(&format!("distinct/raw/seq/{shape}/{status}"), || {
+                SignatureProjective::verify_distinct(
+                    black_box(&public_keys).iter(),
+                    black_box(signatures).iter(),
+                    black_box(&messages).iter().copied(),
+                ) == expected
+            });
+            measure(&format!("distinct/pre_hashed/seq/{shape}/{status}"), || {
+                SignatureProjective::verify_distinct_pre_hashed(
+                    black_box(&public_keys).iter(),
+                    black_box(signatures).iter(),
+                    black_box(&hashes).iter(),
+                ) == expected
+            });
+
+            #[cfg(feature = "parallel")]
+            {
+                measure(&format!("distinct/raw/par/{shape}/{status}"), || {
+                    SignatureProjective::par_verify_distinct(
+                        black_box(&public_keys),
+                        black_box(signatures),
+                        black_box(&messages),
+                    ) == expected
+                });
+                measure(&format!("distinct/pre_hashed/par/{shape}/{status}"), || {
+                    SignatureProjective::par_verify_distinct_pre_hashed(
+                        black_box(&public_keys),
+                        black_box(signatures),
+                        black_box(&hashes),
+                    ) == expected
+                });
+            }
+
             measure(&format!("distinct/prepared/seq/{shape}/{status}"), || {
                 SignatureProjective::verify_distinct_prepared(
                     black_box(&public_keys).iter(),
