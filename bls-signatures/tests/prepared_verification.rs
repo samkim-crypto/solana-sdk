@@ -123,6 +123,16 @@ fn prepared_verification_preserves_signature_errors() {
         );
         #[cfg(feature = "parallel")]
         assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                core::slice::from_ref(&keypair.public),
+                &signature,
+                core::slice::from_ref(&hashed),
+            ),
+            expected,
+            "{label}: parallel pre-hashed aggregate screening",
+        );
+        #[cfg(feature = "parallel")]
+        assert_eq!(
             SignatureProjective::par_verify_distinct_aggregated_prepared(
                 core::slice::from_ref(&keypair.public),
                 &signature,
@@ -183,6 +193,15 @@ fn prepared_screening_preserves_duplicate_message_grouping() {
         );
         #[cfg(feature = "parallel")]
         {
+            assert_eq!(
+                SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                    &public_keys,
+                    &aggregate_signature,
+                    &hashes,
+                ),
+                expected,
+                "parallel pre-hashed aggregate screening",
+            );
             assert_eq!(
                 SignatureProjective::par_verify_distinct_aggregated_prepared(
                     &public_keys,

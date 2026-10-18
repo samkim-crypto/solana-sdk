@@ -16,8 +16,6 @@
 //! application requires strict proof that every single participant provided a valid signature
 //! prior to aggregation, you must verify the signatures individually.
 
-#[cfg(feature = "std")]
-use crate::pubkey::verify::NEG_G1_GENERATOR_AFFINE;
 use {
     crate::{
         error::BlsError,
@@ -26,9 +24,8 @@ use {
         pubkey::{AsPubkeyAffine, PopVerified},
         signature::points::{AddToSignatureProjective, AsSignatureAffine, SignatureProjective},
     },
-    blstrs::{Bls12, G1Affine, G1Projective, G2Prepared, Gt},
-    group::{prime::PrimeCurveAffine, Group},
-    pairing::{MillerLoopResult, MultiMillerLoop},
+    blstrs::{G1Affine, G1Projective},
+    group::prime::PrimeCurveAffine,
 };
 #[cfg(feature = "parallel")]
 use {alloc::vec::Vec, rayon::prelude::*};
@@ -280,40 +277,40 @@ impl SignatureProjective {
         }
 
         let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
-        let signature_prepared = G2Prepared::from(aggregate_signature_affine.0);
-
-        #[cfg(feature = "std")]
-        let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
-        #[cfg(not(feature = "std"))]
-        #[allow(clippy::arithmetic_side_effects)]
-        let neg_g1_generator_val: G1Affine = (-G1Projective::generator()).into();
-        #[cfg(not(feature = "std"))]
-        let neg_g1_generator = &neg_g1_generator_val;
 
         let (grouped_pubkeys_affine, grouped_hashed_messages) = Self::group_hashed_terms(
             pubkeys_affine.into_iter().zip(hashed_messages_owned),
             public_keys_len,
         );
-        let grouped_prepared_hashes: alloc::vec::Vec<_> = grouped_hashed_messages
-            .iter()
-            .map(|hashed_message| G2Prepared::from(hashed_message.0))
-            .collect();
-
-        let mut terms =
-            alloc::vec::Vec::with_capacity(grouped_pubkeys_affine.len().saturating_add(1));
-        for (pubkey, prepared_hash) in grouped_pubkeys_affine
-            .iter()
-            .zip(grouped_prepared_hashes.iter())
-        {
+        for pubkey in &grouped_pubkeys_affine {
             if bool::from(pubkey.is_identity()) {
                 return Err(BlsError::VerificationFailed);
             }
-            terms.push((pubkey, prepared_hash));
         }
-        terms.push((neg_g1_generator, &signature_prepared));
 
-        let miller_loop_result = Bls12::multi_miller_loop(&terms);
-        (miller_loop_result.final_exponentiation() == Gt::identity())
+        // Compute each message term directly without temporary G2 tables.
+        let mut message_pairing = blst::blst_fp12::default();
+        for (index, (pubkey, hashed_message)) in grouped_pubkeys_affine
+            .iter()
+            .zip(grouped_hashed_messages.iter())
+            .enumerate()
+        {
+            let term = blst::blst_fp12::miller_loop(hashed_message.0.as_ref(), pubkey.as_ref());
+            if index == 0 {
+                message_pairing = term;
+            } else {
+                #[allow(clippy::arithmetic_side_effects)]
+                {
+                    message_pairing *= term;
+                }
+            }
+        }
+        let generator = G1Affine::generator();
+        let signature_pairing =
+            blst::blst_fp12::miller_loop(aggregate_signature_affine.0.as_ref(), generator.as_ref());
+
+        // Compare the pairings using one final exponentiation.
+        blst::blst_fp12::finalverify(&message_pairing, &signature_pairing)
             .then_some(())
             .ok_or(BlsError::VerificationFailed)
     }
@@ -572,37 +569,35 @@ impl SignatureProjective {
                 .zip(hashed_messages.iter().copied()),
             public_keys_len,
         );
-        let grouped_prepared_hashes: Vec<_> = grouped_hashed_messages
-            .par_iter()
-            .map(|hashed_message| G2Prepared::from(hashed_message.0))
-            .collect();
-
         let aggregate_signature_affine = aggregate_signature.try_as_affine()?;
-        let signature_prepared = G2Prepared::from(aggregate_signature_affine.0);
 
-        #[cfg(feature = "std")]
-        let neg_g1_generator = &*NEG_G1_GENERATOR_AFFINE;
-        #[cfg(not(feature = "std"))]
-        #[allow(clippy::arithmetic_side_effects)]
-        let neg_g1_generator_val: G1Affine = (-G1Projective::generator()).into();
-        #[cfg(not(feature = "std"))]
-        let neg_g1_generator = &neg_g1_generator_val;
-
-        let mut terms =
-            alloc::vec::Vec::with_capacity(grouped_pubkeys_affine.len().saturating_add(1));
-        for (pubkey, prepared_hash) in grouped_pubkeys_affine
-            .iter()
-            .zip(grouped_prepared_hashes.iter())
-        {
+        for pubkey in &grouped_pubkeys_affine {
             if bool::from(pubkey.is_identity()) {
                 return Err(BlsError::VerificationFailed);
             }
-            terms.push((pubkey, prepared_hash));
         }
-        terms.push((neg_g1_generator, &signature_prepared));
 
-        let miller_loop_result = Bls12::multi_miller_loop(&terms);
-        (miller_loop_result.final_exponentiation() == Gt::identity())
+        // Compute message pairings on workers without temporary G2 tables.
+        let message_pairing = grouped_pubkeys_affine
+            .par_iter()
+            .zip(grouped_hashed_messages.par_iter())
+            .map(|(pubkey, hashed_message)| {
+                blst::blst_fp12::miller_loop(hashed_message.0.as_ref(), pubkey.as_ref())
+            })
+            .reduce_with(|mut left, right| {
+                #[allow(clippy::arithmetic_side_effects)]
+                {
+                    left *= right;
+                }
+                left
+            })
+            .unwrap_or_default();
+        let generator = G1Affine::generator();
+        let signature_pairing =
+            blst::blst_fp12::miller_loop(aggregate_signature_affine.0.as_ref(), generator.as_ref());
+
+        // Compare the pairings using one final exponentiation.
+        blst::blst_fp12::finalverify(&message_pairing, &signature_pairing)
             .then_some(())
             .ok_or(BlsError::VerificationFailed)
     }

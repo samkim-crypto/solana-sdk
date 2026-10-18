@@ -10,12 +10,6 @@ use {
     blstrs::G1Affine,
     group::prime::PrimeCurveAffine,
 };
-#[cfg(feature = "std")]
-use {blstrs::G1Projective, group::Group, std::sync::LazyLock};
-
-#[cfg(feature = "std")]
-pub(crate) static NEG_G1_GENERATOR_AFFINE: LazyLock<G1Affine> =
-    LazyLock::new(|| (-G1Projective::generator()).into());
 
 /// A trait that provides Proof of Possession verification methods to any
 /// convertible public key type.
