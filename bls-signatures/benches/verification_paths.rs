@@ -18,6 +18,7 @@ use {
 fn verification_paths(c: &mut Criterion) {
     proof_of_possession_paths(c);
     distinct_prepared_paths(c);
+    distinct_unprepared_paths(c);
 
     #[cfg(feature = "parallel")]
     parallel_aggregate_paths(c);
@@ -444,6 +445,130 @@ fn distinct_prepared_paths(c: &mut Criterion) {
                     b.iter_custom(|iterations| time_on_worker(&pool, iterations, par));
                 });
             }
+        }
+    }
+    group.finish();
+}
+
+fn distinct_unprepared_paths(c: &mut Criterion) {
+    #[cfg(feature = "parallel")]
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(2)
+        .build()
+        .expect("build unprepared distinct benchmark pool");
+    #[cfg(feature = "parallel")]
+    {
+        drop(pool.broadcast(|_| ()));
+        std::thread::sleep(Duration::from_millis(100));
+        println!("distinct unprepared timing: inside a private two-worker Rayon pool");
+    }
+    println!("distinct unprepared timing reuses an affine aggregate signature and pre-hashes");
+
+    let mut group = c.benchmark_group("bls_distinct_unprepared");
+    // Agave screens split-vote certificates with two aggregated keys; 64 keys show scaling.
+    for (shape, key_count, unique) in [
+        ("2/unique", 2u8, true),
+        ("2/shared", 2, false),
+        ("64/unique", 64, true),
+    ] {
+        let keypairs: Vec<_> = (0..key_count)
+            .map(|index| {
+                let mut seed = [42u8; 32];
+                seed[0] = index;
+                Keypair::derive(&seed).expect("derive fixture key")
+            })
+            .collect();
+        let public_keys: Vec<_> = keypairs.iter().map(|keypair| keypair.public).collect();
+        let owned_messages: Vec<_> = (0..key_count)
+            .map(|index| {
+                let message_index = if unique { index } else { 0 };
+                format!("distinct timing {message_index}").into_bytes()
+            })
+            .collect();
+        let messages: Vec<&[u8]> = owned_messages.iter().map(Vec::as_slice).collect();
+        let hashes: Vec<_> = messages
+            .iter()
+            .map(|message| HashedMessage::new(message))
+            .collect();
+        let signatures: Vec<_> = keypairs
+            .iter()
+            .zip(&messages)
+            .map(|(keypair, message)| keypair.sign(message))
+            .collect();
+        let aggregate_signature: SignatureAffine =
+            SignatureProjective::aggregate(signatures.iter())
+                .expect("aggregate fixture signatures")
+                .into();
+
+        let seq_raw = || {
+            SignatureProjective::verify_distinct_aggregated(
+                black_box(&public_keys).iter(),
+                black_box(&aggregate_signature),
+                black_box(&messages).iter().copied(),
+            )
+        };
+        #[cfg(feature = "parallel")]
+        assert_eq!(pool.install(seq_raw), Ok(()), "raw/seq/{shape}");
+        #[cfg(not(feature = "parallel"))]
+        assert_eq!(seq_raw(), Ok(()), "raw/seq/{shape}");
+        group.bench_function(format!("raw/seq/{shape}"), |b| {
+            #[cfg(feature = "parallel")]
+            b.iter_custom(|iterations| time_on_worker(&pool, iterations, seq_raw));
+            #[cfg(not(feature = "parallel"))]
+            b.iter(|| black_box(seq_raw()));
+        });
+
+        let seq_pre_hashed = || {
+            SignatureProjective::verify_distinct_aggregated_pre_hashed(
+                black_box(&public_keys).iter(),
+                black_box(&aggregate_signature),
+                black_box(&hashes).iter(),
+            )
+        };
+        #[cfg(feature = "parallel")]
+        assert_eq!(
+            pool.install(seq_pre_hashed),
+            Ok(()),
+            "pre_hashed/seq/{shape}"
+        );
+        #[cfg(not(feature = "parallel"))]
+        assert_eq!(seq_pre_hashed(), Ok(()), "pre_hashed/seq/{shape}");
+        group.bench_function(format!("pre_hashed/seq/{shape}"), |b| {
+            #[cfg(feature = "parallel")]
+            b.iter_custom(|iterations| time_on_worker(&pool, iterations, seq_pre_hashed));
+            #[cfg(not(feature = "parallel"))]
+            b.iter(|| black_box(seq_pre_hashed()));
+        });
+
+        #[cfg(feature = "parallel")]
+        {
+            let par_raw = || {
+                SignatureProjective::par_verify_distinct_aggregated(
+                    black_box(&public_keys),
+                    black_box(&aggregate_signature),
+                    black_box(&messages),
+                )
+            };
+            assert_eq!(pool.install(par_raw), Ok(()), "raw/par/{shape}");
+            group.bench_function(format!("raw/par/{shape}"), |b| {
+                b.iter_custom(|iterations| time_on_worker(&pool, iterations, par_raw));
+            });
+
+            let par_pre_hashed = || {
+                SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                    black_box(&public_keys),
+                    black_box(&aggregate_signature),
+                    black_box(&hashes),
+                )
+            };
+            assert_eq!(
+                pool.install(par_pre_hashed),
+                Ok(()),
+                "pre_hashed/par/{shape}"
+            );
+            group.bench_function(format!("pre_hashed/par/{shape}"), |b| {
+                b.iter_custom(|iterations| time_on_worker(&pool, iterations, par_pre_hashed));
+            });
         }
     }
     group.finish();
