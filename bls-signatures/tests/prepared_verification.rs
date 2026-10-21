@@ -249,6 +249,22 @@ fn parallel_distinct_screening_preserves_public_key_errors() {
     // The keypair already supplies a PoP-verified key.
     let valid_keys = [unsafe { PopVerified::new_unchecked(compressed) }; 3];
     assert_eq!(
+        SignatureProjective::par_verify_distinct_aggregated(
+            &valid_keys,
+            &aggregate_signature,
+            &messages,
+        ),
+        Ok(()),
+    );
+    assert_eq!(
+        SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+            &valid_keys,
+            &aggregate_signature,
+            &hashes,
+        ),
+        Ok(()),
+    );
+    assert_eq!(
         SignatureProjective::par_verify_distinct_aggregated_prepared(
             &valid_keys,
             &aggregate_signature,
@@ -261,6 +277,24 @@ fn parallel_distinct_screening_preserves_public_key_errors() {
         let mut public_keys = valid_keys;
         // Deliberately bypass PoP validation to exercise malformed-key rejection.
         public_keys[bad_index] = unsafe { PopVerified::new_unchecked(malformed) };
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated(
+                &public_keys,
+                &aggregate_signature,
+                &messages,
+            ),
+            Err(decode_error.clone()),
+            "raw screening: malformed key at {bad_index}",
+        );
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                &public_keys,
+                &aggregate_signature,
+                &hashes,
+            ),
+            Err(decode_error.clone()),
+            "pre-hashed screening: malformed key at {bad_index}",
+        );
         assert_eq!(
             SignatureProjective::par_verify_distinct_aggregated_prepared(
                 &public_keys,
@@ -279,6 +313,24 @@ fn parallel_distinct_screening_preserves_public_key_errors() {
         // An invalid key must be rejected before decoding the aggregate signature.
         public_keys[bad_index] = unsafe { PopVerified::new_unchecked(identity) };
         assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated(
+                &public_keys,
+                &malformed_signature,
+                &messages,
+            ),
+            Err(BlsError::VerificationFailed),
+            "raw screening: identity key at {bad_index} precedes signature decoding",
+        );
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                &public_keys,
+                &malformed_signature,
+                &hashes,
+            ),
+            Err(BlsError::VerificationFailed),
+            "pre-hashed screening: identity key at {bad_index} precedes signature decoding",
+        );
+        assert_eq!(
             SignatureProjective::par_verify_distinct_aggregated_prepared(
                 &public_keys,
                 &malformed_signature,
@@ -286,6 +338,68 @@ fn parallel_distinct_screening_preserves_public_key_errors() {
             ),
             Err(BlsError::VerificationFailed),
             "prepared screening: identity key at {bad_index} precedes signature decoding",
+        );
+    }
+
+    // Mixes key encodings so that two invalid keys fail with different errors.
+    #[derive(Clone, Copy)]
+    enum MixedKey {
+        Affine(PubkeyAffine),
+        Compressed(PubkeyCompressed),
+    }
+    impl AsPubkeyAffine for MixedKey {
+        fn try_as_affine(&self) -> Result<PubkeyAffine, BlsError> {
+            match self {
+                Self::Affine(key) => key.try_as_affine(),
+                Self::Compressed(key) => key.try_as_affine(),
+            }
+        }
+    }
+
+    // With several invalid keys, the first one in input order decides the error.
+    for (first_bad, second_bad, expected) in [
+        (
+            MixedKey::Affine(identity),
+            MixedKey::Compressed(malformed),
+            BlsError::VerificationFailed,
+        ),
+        (
+            MixedKey::Compressed(malformed),
+            MixedKey::Affine(identity),
+            decode_error,
+        ),
+    ] {
+        let public_keys = [
+            unsafe { PopVerified::new_unchecked(MixedKey::Affine(*keypair.public)) },
+            unsafe { PopVerified::new_unchecked(first_bad) },
+            unsafe { PopVerified::new_unchecked(second_bad) },
+        ];
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated(
+                &public_keys,
+                &aggregate_signature,
+                &messages,
+            ),
+            Err(expected.clone()),
+            "raw screening: first of several invalid keys",
+        );
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated_pre_hashed(
+                &public_keys,
+                &aggregate_signature,
+                &hashes,
+            ),
+            Err(expected.clone()),
+            "pre-hashed screening: first of several invalid keys",
+        );
+        assert_eq!(
+            SignatureProjective::par_verify_distinct_aggregated_prepared(
+                &public_keys,
+                &aggregate_signature,
+                &preparations,
+            ),
+            Err(expected),
+            "prepared screening: first of several invalid keys",
         );
     }
 }
