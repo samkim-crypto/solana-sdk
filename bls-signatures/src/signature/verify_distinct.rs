@@ -28,6 +28,7 @@ use {
         },
     },
     blstrs::{G1Affine, G1Projective},
+    core::borrow::Borrow,
     group::prime::PrimeCurveAffine,
 };
 #[cfg(feature = "parallel")]
@@ -51,6 +52,11 @@ impl<T> GroupedTerm<T> {
             value,
         }
     }
+}
+
+fn raw_term(message: &[u8]) -> ([u8; BLS_SIGNATURE_COMPRESSED_SIZE], HashedMessage) {
+    let hashed_message = HashedMessage::new(message);
+    (hashed_message.0.to_compressed(), hashed_message)
 }
 
 fn hashed_term(
@@ -80,12 +86,12 @@ fn screening_public_key<P: AsPubkeyAffine + ?Sized>(
 }
 
 #[allow(clippy::arithmetic_side_effects)]
-fn hashed_message_pairing(entries: &[GroupedTerm<&HashedMessage>]) -> blst::blst_fp12 {
+fn hashed_message_pairing<T: Borrow<HashedMessage>>(entries: &[GroupedTerm<T>]) -> blst::blst_fp12 {
     // Compute each message term directly without temporary G2 tables.
     entries
         .iter()
         .map(|entry| {
-            blst::blst_fp12::miller_loop(entry.value.0.as_ref(), entry.public_key.as_ref())
+            blst::blst_fp12::miller_loop(entry.value.borrow().0.as_ref(), entry.public_key.as_ref())
         })
         .reduce(|mut left, right| {
             left *= right;
@@ -96,12 +102,14 @@ fn hashed_message_pairing(entries: &[GroupedTerm<&HashedMessage>]) -> blst::blst
 
 #[cfg(feature = "parallel")]
 #[allow(clippy::arithmetic_side_effects)]
-fn par_hashed_message_pairing(entries: &[GroupedTerm<&HashedMessage>]) -> blst::blst_fp12 {
+fn par_hashed_message_pairing<T: Borrow<HashedMessage> + Sync>(
+    entries: &[GroupedTerm<T>],
+) -> blst::blst_fp12 {
     // Compute message pairings on workers without temporary G2 tables.
     entries
         .par_iter()
         .map(|entry| {
-            blst::blst_fp12::miller_loop(entry.value.0.as_ref(), entry.public_key.as_ref())
+            blst::blst_fp12::miller_loop(entry.value.borrow().0.as_ref(), entry.public_key.as_ref())
         })
         .reduce_with(|mut left, right| {
             left *= right;
@@ -232,12 +240,7 @@ impl SignatureProjective {
             return Err(BlsError::EmptyAggregation);
         }
         let aggregate_signature = SignatureProjective::aggregate(signatures)?;
-        let hashed_messages: alloc::vec::Vec<_> = messages.map(HashedMessage::new).collect();
-        Self::verify_distinct_aggregated_pre_hashed(
-            public_keys,
-            &aggregate_signature,
-            hashed_messages.iter(),
-        )
+        Self::verify_distinct_aggregated(public_keys, &aggregate_signature, messages)
     }
 
     /// Performs aggregate screening of signatures over distinct pre-hashed messages.
@@ -330,12 +333,14 @@ impl SignatureProjective {
         if public_keys.len() == 0 {
             return Err(BlsError::EmptyAggregation);
         }
-        let hashed_messages: alloc::vec::Vec<_> = messages.map(HashedMessage::new).collect();
-        Self::verify_distinct_aggregated_pre_hashed(
-            public_keys,
-            aggregate_signature,
-            hashed_messages.iter(),
-        )
+        let mut entries = alloc::vec::Vec::with_capacity(public_keys.len());
+        for (pubkey, message) in public_keys.zip(messages) {
+            entries.push(GroupedTerm::new(
+                screening_public_key(pubkey)?,
+                raw_term(message),
+            ));
+        }
+        Self::screen_terms(entries, aggregate_signature, hashed_message_pairing)
     }
 
     /// Performs aggregate screening with a pre-aggregated signature over distinct pre-hashed
@@ -440,15 +445,7 @@ impl SignatureProjective {
             return Err(BlsError::EmptyAggregation);
         }
         let aggregate_signature = SignatureProjective::par_aggregate(signatures.into_par_iter())?;
-        let hashed_messages: Vec<_> = messages
-            .par_iter()
-            .map(|msg| HashedMessage::new(msg))
-            .collect();
-        Self::par_verify_distinct_aggregated_pre_hashed(
-            public_keys,
-            &aggregate_signature,
-            &hashed_messages,
-        )
+        Self::par_verify_distinct_aggregated(public_keys, &aggregate_signature, messages)
     }
 
     /// Performs aggregate screening of signatures over distinct pre-hashed messages in parallel.
@@ -545,15 +542,8 @@ impl SignatureProjective {
         if public_keys.is_empty() {
             return Err(BlsError::EmptyAggregation);
         }
-        let hashed_messages: alloc::vec::Vec<_> = messages
-            .par_iter()
-            .map(|msg| HashedMessage::new(msg))
-            .collect();
-        Self::par_verify_distinct_aggregated_pre_hashed(
-            public_keys,
-            aggregate_signature,
-            &hashed_messages,
-        )
+        let entries = Self::par_collect_terms(public_keys, messages, |message| raw_term(message))?;
+        Self::screen_terms(entries, aggregate_signature, par_hashed_message_pairing)
     }
 
     /// Performs aggregate screening in parallel with a pre-aggregated signature over distinct
