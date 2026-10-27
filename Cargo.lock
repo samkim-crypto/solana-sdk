@@ -71,7 +71,8 @@ checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 [[package]]
 name = "anza-blstrs"
 version = "0.7.1"
-source = "git+https://github.com/anza-xyz/blstrs/?tag=anza-blstrs-0.7.1#2a5e6f375b3450b6812bfb91c50c3c16b1e7969e"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8a69a28fa945b11b8e1c16d00dbd675bf9aaa16202afc0771fad3e2890077125"
 dependencies = [
  "blst",
  "byte-slice-cast",
