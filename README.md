@@ -214,6 +214,37 @@ For example, to patch `solana-bn254`, run:
 
 It's possible to run the script multiple times for different crates.
 
+### Testing a pull request with solfuzz-agave
+
+Pull requests that change code Agave relies on for consensus can be checked
+against the [solfuzz-agave](https://github.com/firedancer-io/solfuzz-agave) test
+vectors before merging:
+
+```console
+./scripts/test-solfuzz-agave.sh <PR_NUMBER> <CRATE_PATH>
+```
+
+For example, if pull request 1075 changes `solana-address`, run:
+
+```console
+./scripts/test-solfuzz-agave.sh 1075 address
+```
+
+The script needs an x86_64 Linux machine with `python3` and the packages required
+to build Agave. It builds solfuzz-agave twice, patching in the crate and its
+dependencies from this repo, first at the commit the pull request branched from
+and then at the head of the pull request. It runs every test vector through both
+builds and exits with an error if any result differs, writing the differences to
+`target/solfuzz-agave/results/diff`.
+
+By default, the script uses the default branch of solfuzz-agave. Set
+`SOLFUZZ_AGAVE_BRANCH` to use a different one. The crate's version in this repo
+has to be compatible with the version that branch uses, so a crate with
+unpublished breaking changes will fail to patch or build.
+
+NOTE: This only replays a fixed set of test vectors. It doesn't replace fuzzing
+or running the change on a non-voting validator.
+
 ### Publishing a crate from this repository
 
 NOTE: The repo currently contains unpublished breaking changes, so please
